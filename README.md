@@ -54,7 +54,7 @@ At a high level:
 
 ## Tech stack
 
-To be decided. Likely a web app first (mobile-friendly), with a small backend that proxies map and places API calls so API keys aren't exposed to clients.
+Native mobile apps for iOS and Android, backed by the Halfsies API, which proxies map and places API calls so API keys aren't exposed to clients. There is no web client in v1. The app framework is still to be decided (see `REQUIREMENTS.md` OD-01).
 
 ## Privacy
 
