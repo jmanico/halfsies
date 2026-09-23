@@ -51,11 +51,15 @@ The weight `W` and the Even trip thresholds are server-side settings (FR-SRCH-06
 | Push | APNs, Firebase Cloud Messaging |
 | Identity | Sign in with Apple, Google (OIDC) |
 
-The final provider choices are open decisions (OD-02, OD-03).
+`ARCHITECTURE.md` proposes Google Maps Platform for routing and places. That choice still needs Product and Legal sign-off (OD-02, OD-03).
 
 ## Tech stack
 
-Native mobile apps for iOS and Android, backed by the Halfsies API. The API is the only backend the apps talk to. It proxies all place and routing calls, so provider API keys never ship in the apps. The app framework is still to be decided (OD-01).
+- **Apps:** React Native (TypeScript), one codebase for iOS and Android
+- **API:** Node.js (TypeScript) on AWS
+- **Database:** PostgreSQL (Amazon Aurora)
+
+The API is the only backend the apps talk to. It proxies all place and routing calls, so provider API keys never ship in the apps. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for components, data flows, and infrastructure.
 
 ## Privacy
 
@@ -70,6 +74,9 @@ Halfsies handles location data, so the defaults are conservative:
 ## Docs
 
 - [`REQUIREMENTS.md`](REQUIREMENTS.md): product, API, privacy, and security requirements
+- [`ARCHITECTURE.md`](ARCHITECTURE.md): components, data flows, trust boundaries, and technology choices
+- [`SECURITY.md`](SECURITY.md): threat model, security controls, and secure coding rules
+- [`REQUIREMENT_TEMPLATE.md`](REQUIREMENT_TEMPLATE.md): template for writing a single requirement
 - [`DESIGN.md`](DESIGN.md): visual design language
 - [`style-guide.html`](style-guide.html): reference rendering of the design tokens
 
