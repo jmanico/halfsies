@@ -22,4 +22,10 @@ Each topic lives in exactly one file. Read the owning file before working in its
 
 ## Commands
 
-Build, test, and run commands: TO BE DECIDED. None exist yet.
+Planned; they take effect when code lands:
+
+- `npm ci`: install dependencies
+- `npm run lint`: lint
+- `npm test`: run tests
+- `npm run dev`: run the API locally
+- `npx expo start`: run the app

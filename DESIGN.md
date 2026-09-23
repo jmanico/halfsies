@@ -2,26 +2,33 @@
 
 Visual and frontend design language for the Halfsies iOS and Android apps. `REQUIREMENTS.md` owns product scope; this file never adds features. `style-guide.html` renders these tokens and components and MUST change in the same commit as this file.
 
-Markers: `TO BE DECIDED` = decision not yet made (see Open Questions). Rule keywords follow RFC 2119. Rule IDs (`C-*`, `R-*`, `P-*`, `A-*`) are stable.
+Rule keywords follow RFC 2119. Rule IDs (`C-*`, `R-*`, `P-*`, `A-*`) are stable.
 
 ## Design Inputs
 
 - Audience: the Initiator and Invitee (`REQUIREMENTS.md` 1.3), in US English (NFR-L10N-01).
 - Platforms: PLAT-01 to PLAT-04. No web client (`REQUIREMENTS.md` 1.2).
-- Brand personality, light or dark mode, and brand assets: TO BE DECIDED (DQ-1, DQ-2, DQ-5).
+- Brand personality: warm and playful; friendly, fair, a little cheeky (see Brand Voice).
+- Color modes: light and dark in v1. The app follows the system setting (see Dark Mode).
 
 ## Brand and Logo
 
-The logo and color palette are provisional until the brand direction is decided (DQ-1).
+The logo and color palette are final.
 
 **Concept.** `logo.svg` pairs a mark with a wordmark. The mark is a circle split into two halves, Tangerine for Person A and Iris for Person B. A thin gap separates them, and a Midnight point sits where they meet. The mark says "two sides, one meeting point." The wordmark is outlined to paths, so it has no font dependency.
 
 **Usage.**
 - Clear space: at least the diameter of the center point (30 units at the 128-unit mark height) on every side.
-- Minimum size: full lockup 120 px/pt wide. Below that, use the mark alone (the `#mark` group, viewBox `0 0 128 128`) at 16 px/pt or larger. A dedicated mark-only file and app icon are TO BE DECIDED (DQ-3).
-- Backgrounds: white or `surface` only. Dark-background and single-color variants are TO BE DECIDED (DQ-2).
+- Minimum size: full lockup 120 px/pt wide. Below that, use the mark alone (the `#mark` group, viewBox `0 0 128 128`) at 16 px/pt or larger. The mark-only file is `logo-mark.svg`.
+- Backgrounds: on light backgrounds use `logo.svg` as is. On dark backgrounds use the dark-background variant: the wordmark fill changes to dark `text` (`#F2F3F8`); the halves, center point, and white ring stay unchanged. No other variants.
 - Do not: recolor or swap the halves, fill the gap, blend the halves with a gradient (C-5), stretch or rotate, add effects, or re-typeset the wordmark in another font.
+- Small sizes: below 32 px/pt, drop the inner detail (the white ring around the center point) so the mark stays legible.
 - Logo files and variants MUST meet `SECURITY.md` SC-WEB-03.
+
+**App icon.** The app icon is the mark (`#mark`) centered on a `primary` (Midnight) background.
+- iOS: a full-bleed square; the system applies the corner mask. Keep the mark within the central 80%.
+- Android: an adaptive icon with a `primary` background layer and the mark as the foreground layer, kept within the 66 dp safe zone so any mask shape (circle, squircle, rounded square) leaves it whole. Provide a monochrome layer for themed icons.
+- Below 32 px/pt the small-size rule above applies.
 
 ## Color Palette
 
@@ -65,9 +72,46 @@ Utility values: `divider` `#E4E6EF` is for decorative dividers only, never contr
 - C-4: `person-a` and `person-b` are reserved for the two people. They MUST NOT be reused for categories, promos, or status.
 - C-5: No gradients between `person-a` and `person-b`.
 
+### Dark Mode
+
+Dark mode ships in v1 and follows the system setting; there is no in-app toggle. Dark tokens are Midnight-based and replace the light values by token name.
+
+| Token | Dark hex | Role in dark |
+|---|---|---|
+| `primary` | `#C9CCF2` | Primary button fill (label `#161A3D`), focus ring, links |
+| `secondary` | `#A9AEC4` | Secondary text, metadata, input borders |
+| `background` | `#161A3D` | Screen background (Midnight) |
+| `surface` | `#20254D` | Cards, sheets |
+| `text` | `#F2F3F8` | Body and heading text |
+| `error` | `#FF8A80` | Validation errors, destructive actions |
+| `success` | `#5FD19A` | Even trip badge text, confirmations |
+| `person-a` | `#FF7A1A` | Unchanged. Person A fills and markers |
+| `person-a-text` | `#FF9A4D` | Person A text and icons on dark |
+| `person-b` | `#A69CFF` | Person B fills, markers, and text on dark |
+
+Dark utility values: `divider` `#2E3460` (decorative only); `success-tint` `#173A2E`. The logo keeps its own colors (see Brand and Logo).
+
+**Verified contrast, dark** (WCAG 2.x relative luminance):
+
+| Foreground on background | Ratio | Permitted use |
+|---|---|---|
+| `text` on `background` / `surface` | 15.17 / 13.22 | All text |
+| `secondary` on `background` / `surface` | 7.64 / 6.66 | All text; input borders |
+| `#161A3D` on `primary` | 10.73 | Primary button label |
+| `primary` on `background` / `surface` | 10.73 / 9.35 | Links, focus ring, secondary button |
+| `person-a-text` on `background` / `surface` | 7.99 / 6.96 | All text |
+| `person-b` on `background` / `surface` | 7.06 / 6.15 | All text |
+| `success` on `background` / `success-tint` | 8.86 / 6.59 | All text |
+| `error` on `background` / `surface` | 7.36 / 6.42 | All text |
+| `#161A3D` on `person-a` / `person-b` | 6.44 / 7.06 | Letters on person markers |
+| `person-a` on `background` | 6.44 | Fills |
+
+- C-6: In dark mode, letters on `person-b` fills MUST use `#161A3D`, never white (white on dark `person-b` is 2.38). C-2 still applies to `person-a`.
+- C-7: Every screen and component MUST be verified in both modes before release.
+
 ## Typography
 
-**Provisional default:** the platform system font, which is SF Pro on iOS and Roboto on Android. Fallback stack for reference renderings: `system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`. The system font needs no license or bundling, is highly legible, and supports Dynamic Type and Android font scaling out of the box (A-6). Brand typography is TO BE DECIDED (DQ-4).
+The platform system font: SF Pro on iOS and Roboto on Android. There are no brand typefaces. Fallback stack for reference renderings: `system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`. The system font needs no license or bundling, is highly legible, and supports Dynamic Type and Android font scaling out of the box (A-6).
 
 Weights: 400 regular, 600 semibold, 700 bold.
 
@@ -85,6 +129,13 @@ Weights: 400 regular, 600 semibold, 700 bold.
 - Sizes are in pt/sp at the default text size and scale per A-6. The minimum body size is 16.
 - Travel times MUST use tabular numerals, so A and B values line up.
 - Use sentence case everywhere. No all-caps labels.
+
+## Iconography
+
+- Icon set: Lucide (ISC license) for mode, category, and UI icons. Record its license notice with the app's third-party notices.
+- Default size 24 (20 inside dense rows), stroke 2, `currentColor` so icons follow the text token and color mode.
+- Icons that carry meaning have an accessibility label or sit next to visible text (A-8). Do not mix in icons from other sets.
+- Icon SVGs MUST meet `SECURITY.md` SC-WEB-03.
 
 ## Layout and Spacing
 
@@ -112,22 +163,37 @@ Weights: 400 regular, 600 semibold, 700 bold.
 **Form feedback.** Errors appear below the field in `error`, with an icon and text, never color alone. They state the problem and the fix: "We couldn't find that address. Try adding a city." The field is marked invalid for assistive technology. Success messages use `success` with an icon. Unequal travel times are information, not errors (R-3).
 
 **Result card and travel pair** (FR-RES-01).
-- R-1: A result card shows the FR-RES-01 fields. Times appear in A-then-B order, each with the mode icon and a person label.
+- R-1: A result card shows the FR-RES-01 fields. Times appear in A-then-B order, each with the mode icon and a person label. Displayed times are rounded to the nearest minute ("22 min · 25 min"); the API supplies the rounded values.
 - R-2: The Even trip badge shows when the API marks the result as even (FR-SRCH-06). It is a pill with `success-tint` fill, `success` text in `type-caption`, a leading check, and the text "Even trip". The UI MUST NOT recompute the threshold.
-- R-3: When a trip is not even, state the difference in plain `secondary` text ("B travels 12 min longer"). Use no red and no warning icon.
+- R-3: When a trip is not even, state the difference in plain `secondary` text, computed from the rounded displayed values ("3 min difference" or "B travels 3 min longer"). Use no red and no warning icon. The Even trip badge follows the API flag, which the server computes from unrounded values, so a pair such as "22 min · 23 min" can still show "Even trip".
 - The UI MUST keep the API's ranking order (FR-SRCH-07).
 
 **Person markers.** Person markers are 32 circles with a white ring. Person A: `person-a` fill with a `text` letter. Person B: `person-b` fill with a white letter. Meeting places use a `primary` pin. The other person's marker uses the snapped position and area label the API returns (API-SHP-01).
 
 **Privacy patterns.**
-- P-2: The pre-prompt PRIV-07 requires explains why the permission is needed. Location copy: "Halfsies uses your location to calculate travel times. The other person sees only your general area, never your exact location." Decline has the same visual weight as accept. The copy MUST meet `SECURITY.md` SC-PRIV-11, and this wording is under review (DQ-8).
-- P-4: A persistent "Who can see what" row on the session screen opens a plain-language summary (PRIV-08). The summary MUST say that the other person sees your travel time to each result (`SECURITY.md` SC-PRIV-11).
+- P-2: The pre-prompt PRIV-07 requires explains why the permission is needed. Location copy: "Halfsies uses your location to calculate travel times. They'll see your approximate area and travel times, never your exact starting point." Decline has the same visual weight as accept. The copy MUST meet `SECURITY.md` SC-PRIV-11. Never say "exact location".
+- P-4: A persistent "Who can see what" row on the session screen opens a plain-language summary (PRIV-08). The summary MUST say that the other person sees your travel time to each result (`SECURITY.md` SC-PRIV-11). It uses the same sentence as P-2: "They'll see your approximate area and travel times, never your exact starting point."
+- P-5: Screenshot and app-switcher protection (decision SQ-14). On iOS, screens showing your own precise origin or an active invite link are replaced by a neutral cover (logo on `background`) in the app switcher snapshot. On Android, those screens set `FLAG_SECURE`. Other screens are not protected.
+- P-6: Age attestation. Sign-in and guest join show a required, unchecked checkbox "I am 16 or older" above the continue button. Continue stays disabled until it is checked, with the reason stated nearby. The checkbox has a visible label and meets the 48 touch target.
+
+**Safety: block and report.** Both live in an overflow menu ("More") on the session screen, labeled "Block [name]" and "Report [name]".
+- Block (accounts only): a confirmation sheet explains "You won't be able to start or join sessions with each other. They won't be told." The confirm button uses the destructive style, labeled "Block". Guests see "Leave session" instead of Block.
+- Report (accounts and guests): a sheet with a required reason (single-select list) and an optional text field with a visible 500-character counter. The copy says no location data is sent. Buttons: "Send report" (primary) and "Cancel". Confirmation: "Report sent. We review reports within 7 days." Account holders are then offered Block.
+- Neither surface uses `person-a` or `person-b` colors (C-4).
+
+## Brand Voice
+
+Owner: Product. Warm and playful: friendly, fair, a little cheeky. Plain words, short sentences, US English, sentence case.
+- Be kind about unequal trips; it's information, not blame (R-3).
+- A little cheek in empty states and confirmations ("Halfway there!"); none in errors, privacy, safety, or permission copy, which stay plain and calm.
+- Never guilt, pressure, or overclaim privacy.
+- Invite share text (FR-SES-08): "Let's meet halfway! Join me on Halfsies: <link>". It MUST NOT include any location, address, or area.
 
 ## Accessibility
 
 Target: WCAG 2.2 AA, applied to native apps per the W3C guidance on applying WCAG to mobile (NFR-A11Y-01).
 
-- A-1: Use only the text and background pairs listed in Color Palette. Non-text control boundaries MUST reach at least 3:1.
+- A-1: Use only the text and background pairs listed in Color Palette and Dark Mode. Non-text control boundaries MUST reach at least 3:1.
 - A-2: Focus is always visible, as specified under Focus. Focus order follows reading order. Everything works with a keyboard, switch control, VoiceOver, and TalkBack (NFR-A11Y-04).
 - A-3: The map has a list equivalent that carries identical information (FR-RES-02).
 - A-4: Travel pairs are announced as one sentence: "18 minutes for you, 19 minutes for them. Even trip."
@@ -138,11 +204,4 @@ Target: WCAG 2.2 AA, applied to native apps per the W3C guidance on applying WCA
 
 ## Open Questions
 
-- DQ-1: What is the brand personality and direction? Until it is decided, the logo and palette remain provisional.
-- DQ-2: Is dark mode in v1? It decides whether dark tokens and a dark-background logo variant are needed. The initial draft proposed a Midnight-based dark theme.
-- DQ-3: What are the app icon and mark-only logo file, including the iOS and Android icon masks and small-size simplification?
-- DQ-4: Should there be brand typefaces, or do we keep system fonts? The initial draft proposed Bricolage Grotesque for headings and Atkinson Hyperlegible Next for body text (both OFL 1.1). If adopted, they must be bundled in the apps, support tabular numerals, and scale with Dynamic Type.
-- DQ-5: Who owns brand voice and the invite share text wording (FR-SES-08)? Does it live in this file or in a separate brand guide?
-- DQ-6: If displayed travel times are rounded (OD-06), how do the travel pair and the R-3 difference text read?
-- DQ-8: How should P-2 and P-4 describe travel-time exposure without overclaiming ("never your exact location") or alarming users (`SECURITY.md` T-22, T-62)? TO BE DECIDED.
-- DQ-7: What are the mode and category icons? No icon set has been chosen. Candidates must be open-licensed.
+None open.

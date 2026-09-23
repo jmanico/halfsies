@@ -69,6 +69,7 @@ Two people each enter a starting point. Halfsies returns restaurants and activit
 | ID | Requirement |
 |---|---|
 | FR-ACC-01 | The Initiator MUST sign in before creating a session. Supported identity providers: Sign in with Apple and Google. |
+| FR-ACC-07 | Users MUST be 16 or older. The app MUST require the attestation "I am 16 or older" at sign-in and at guest join. Store age rating: 12+ (Apple), Teen (Google). GDPR-K applies before any EU launch (PRIV-10). |
 | FR-ACC-02 | The Invitee MAY join a session as a guest without creating an account. Guest identity is scoped to one session. |
 | FR-ACC-03 | A guest MAY upgrade to a full account at any time; the current session MUST carry over. |
 | FR-ACC-04 **[AC]** | Users MUST be able to delete their account in-app (App Store Guideline 5.1.1(v), Google Play account deletion policy). Deletion MUST remove or irreversibly anonymize all personal data within 30 days and immediately revoke all tokens. AC: after `DELETE /v1/me`, all refresh tokens for the user fail with 401 and the user record is unrecoverable via any API. |
@@ -86,14 +87,14 @@ Two people each enter a starting point. Halfsies returns restaurants and activit
 | FR-SES-05 | Either participant MUST be able to leave a session. Leaving removes that participant's starting point immediately. |
 | FR-SES-06 | Sessions MUST expire at the earlier of: 24 hours after a scheduled meeting time, or 7 days after creation. Expired sessions are read-only for their Plan summary and purge location data per section 6.3. |
 | FR-SES-07 | The Initiator MUST be able to end a session at any time. |
-| FR-SES-08 | Share text for the invite MUST NOT include either participant's location. Its wording is TO BE DECIDED (`DESIGN.md` DQ-5). |
+| FR-SES-08 | Share text for the invite MUST NOT include either participant's location. Wording: "Let's meet halfway! Join me on Halfsies: <link>" (`DESIGN.md` owns brand voice). |
 
 ### 3.3 Starting points
 
 | ID | Requirement |
 |---|---|
 | FR-ORG-01 | Each participant sets their own starting point by address search, current device location, or dropping a pin on a map. |
-| FR-ORG-02 | Address search MUST use API-proxied autocomplete (`GET /v1/places/autocomplete`). Minimum 3 characters before a request; client debounce of at least 300 ms. |
+| FR-ORG-02 | Address search MUST use API-proxied autocomplete (`POST /v1/places/autocomplete`, JSON body). Minimum 3 characters before a request; client debounce of at least 300 ms. |
 | FR-ORG-03 | Current location MUST be requested only on explicit user action, using "while in use" or one-time permission. The app MUST NOT request background location. |
 | FR-ORG-04 | Each participant selects their own travel mode (drive, transit, walk, bike). Modes MAY differ between participants. |
 | FR-ORG-05 **[AC]** | A participant MUST NOT be able to set or modify the other participant's starting point or mode. AC: `PUT /v1/sessions/{id}/participants/{otherId}/origin` returns 404, because no such route exists (section 4.2). |
@@ -104,13 +105,13 @@ Two people each enter a starting point. Halfsies returns restaurants and activit
 | ID | Requirement |
 |---|---|
 | FR-SRCH-01 | Search runs only when both participants have set a starting point and mode. |
-| FR-SRCH-02 | Filters: category (multi-select), open at meeting time, price level, maximum travel time per person (default 60 minutes, range 10 to 120). Who sets the maximum travel time is open (OD-10; `SECURITY.md` T-52). |
+| FR-SRCH-02 | Filters: category (multi-select), open at meeting time, price level, maximum travel time per person (default 60 minutes, range 10 to 120). Each participant sets their own maximum, which applies only to their own travel time (`SECURITY.md` T-52, SC-PRIV-08). |
 | FR-SRCH-03 | Meeting time: "now" or a scheduled time up to 14 days ahead. Travel time estimates MUST use the meeting time for transit schedules and traffic where the provider supports it. |
 | FR-SRCH-04 | Candidate generation MUST NOT rely only on the geographic midpoint. It MUST sample candidates from the region where both participants' reachable areas overlap (for example, intersecting isochrones, or a search area around multiple points along the travel-time-balanced region). The method is documented in `ARCHITECTURE.md`. |
 | FR-SRCH-05 **[AC]** | For each candidate the API MUST compute `tA` and `tB` using each participant's own mode and the meeting time. AC: fixture test with known matrix returns expected `tA`, `tB` per candidate. |
 | FR-SRCH-06 **[AC]** | A candidate is an Even trip when `abs(tA - tB) <= max(0.15 * max(tA, tB), 300)` seconds. The 0.15 ratio and 300-second floor are server-side configuration (`FAIRNESS_RATIO`, `FAIRNESS_FLOOR_SECONDS`). AC: boundary tests at exactly the threshold, one second over, and one second under. |
 | FR-SRCH-07 **[AC]** | Default ranking score: `score = max(tA, tB) + W * abs(tA - tB)`, lower is better, with `W` configurable (default 1.0). Ties break by provider rating, then by place ID for determinism. AC: identical inputs produce identical ordering across 100 runs. |
-| FR-SRCH-08 | Candidates where either `tA` or `tB` exceeds the per-person maximum MUST be excluded. |
+| FR-SRCH-08 | Candidates where `tA` exceeds A's maximum or `tB` exceeds B's maximum MUST be excluded. |
 | FR-SRCH-09 | The API MUST return between 0 and 25 results per search. |
 | FR-SRCH-10 | If no results are found, the API MUST return a structured reason (`no_overlap`, `filters_too_narrow`, `provider_unavailable`) so the app can show a directive empty state. |
 | FR-SRCH-11 | Search results MUST be cached per session and input hash for 15 minutes to control provider cost. Cache keys MUST NOT contain raw coordinates in logs or metrics. |
@@ -126,6 +127,13 @@ Two people each enter a starting point. Halfsies returns restaurants and activit
 | FR-RES-05 | Accepting a proposal creates the Plan and notifies both participants. |
 | FR-RES-06 | From a Plan, each participant MUST be able to open directions in Apple Maps or Google Maps using the place coordinate as destination. The deep link MUST NOT include the other participant's starting point. |
 | FR-RES-07 | A participant MAY add the Plan to their device calendar through the OS calendar API with explicit permission. |
+
+### 3.5a Safety: block and report
+
+| ID | Requirement |
+|---|---|
+| FR-SAFE-01 **[AC]** | An account holder MUST be able to block the other participant's account (`POST /v1/blocks`) and unblock it (`DELETE /v1/blocks/{accountId}`). A blocked pair MUST NOT be able to create or redeem sessions with each other. The block is silent to the blocked user. Guests cannot block; they leave the session (FR-SES-05). AC: redeeming an invite from an account that blocked the redeemer, or that the redeemer blocked, fails with the same response as an invalid token. |
+| FR-SAFE-02 | Any participant, including a guest, MUST be able to report the other participant (`POST /v1/sessions/{sessionId}/reports`) with a reason from a fixed enum and optional free text of at most 500 characters. Reports MUST NOT contain location data. Reports are stored in `abuse_reports`, notify abuse@halfsies.app, and are reviewed within 7 days. No automated action is taken beyond the reporter's own block. |
 
 ### 3.6 Notifications
 
@@ -148,7 +156,7 @@ Two people each enter a starting point. Halfsies returns restaurants and activit
 | API-02 | All endpoints are under `/v1`. Breaking changes require `/v2`. The API MUST support at least the two most recent released app versions. |
 | API-03 | Request and response bodies are JSON (`application/json`, UTF-8). |
 | API-04 | Errors MUST use RFC 9457 Problem Details (`application/problem+json`). Error responses MUST NOT include stack traces, SQL, provider responses, or internal hostnames. |
-| API-05 | All `POST` endpoints that create resources MUST accept an `Idempotency-Key` header and return the original response for repeated keys within 24 hours. How this applies to responses that carry secrets is open (`SECURITY.md` SQ-22); until it is resolved, SC-VAL-07 applies. |
+| API-05 | All `POST` endpoints that create resources MUST accept an `Idempotency-Key` header and return the original response for repeated keys within 24 hours. Responses that carry secrets or tokens are excluded: a replay of such a key returns 409 with no body, and the client re-fetches (`SECURITY.md` SC-VAL-07). |
 | API-06 | Resource identifiers MUST be random and non-sequential (UUIDv4 or 128-bit random). |
 | API-07 | The API MUST reject requests from app versions below a configured minimum with 426 and a Problem Details body the app uses to prompt an update. |
 
@@ -172,12 +180,15 @@ Two people each enter a starting point. Halfsies returns restaurants and activit
 | POST | `/v1/invites/redeem` | Anyone with token | Join session; returns guest or account-bound credentials |
 | PUT | `/v1/sessions/{sessionId}/participants/me/origin` | Participant | Set own starting point and mode |
 | DELETE | `/v1/sessions/{sessionId}/participants/me` | Participant | Leave session |
-| GET | `/v1/places/autocomplete` | Participant or Account | Proxied address autocomplete |
+| POST | `/v1/places/autocomplete` | Participant or Account | Proxied address autocomplete |
 | POST | `/v1/sessions/{sessionId}/searches` | Participant | Run search |
 | GET | `/v1/sessions/{sessionId}/searches/{searchId}` | Participant | Search results |
 | POST | `/v1/sessions/{sessionId}/proposals` | Participant | Propose a place |
 | POST | `/v1/sessions/{sessionId}/proposals/{proposalId}/accept` | Other participant | Accept proposal |
 | DELETE | `/v1/sessions/{sessionId}/proposals/{proposalId}` | Proposer | Withdraw proposal |
+| POST | `/v1/sessions/{sessionId}/reports` | Participant | Report the other participant (FR-SAFE-02) |
+| POST | `/v1/blocks` | Account | Block an account (FR-SAFE-01) |
+| DELETE | `/v1/blocks/{accountId}` | Account | Unblock an account (FR-SAFE-01) |
 
 Participant-scoped endpoints use `participants/me`. The API MUST NOT expose any endpoint that writes another participant's data.
 
@@ -216,7 +227,7 @@ Participant-scoped endpoints use `participants/me`. The API MUST NOT expose any 
 | ID | Requirement |
 |---|---|
 | NFR-COST-01 | Maximum candidates per search sent to the travel time matrix: 50 (configurable). |
-| NFR-COST-02 | Per-user and global daily budgets for provider calls MUST be enforced server-side, with alerting at 80 percent of budget. |
+| NFR-COST-02 | Per-user and global daily budgets for provider calls MUST be enforced server-side, with alerting at 80 percent of budget. v1 values (server configuration): 20 searches per user per day, 200 autocomplete calls per user per day, USD 50 per day global provider spend. |
 | NFR-COST-03 | Provider data caching MUST comply with each provider's terms of service. Allowed retention per provider is recorded in `ARCHITECTURE.md`. |
 
 ### 5.4 Accessibility
@@ -253,7 +264,7 @@ Location is the most sensitive data Halfsies handles. These requirements apply t
 | PRIV-03 **[AC]** | The other participant's starting point MUST be snapped server-side before it is sent to any client: coordinates rounded to the center of a geohash precision 6 cell, plus a neighborhood or locality label. AC: property test over 10,000 random coordinates verifies returned approx coordinate is the geohash-6 cell center and no response field reveals the raw coordinate. |
 | PRIV-04 | Precise starting point coordinates MUST be encrypted at rest with a key separate from general database encryption (application-level or column-level encryption). |
 | PRIV-05 **[AC]** | Precise coordinates and addresses MUST NOT appear in application logs, traces, metrics labels, analytics events, crash reports, or error messages. AC: log-scrubbing test injects known coordinates into a full session flow and asserts zero matches across captured log and trace output. |
-| PRIV-06 | Travel times that could allow trilateration of the other participant's origin, including from the results of a single search, are an accepted residual risk for v1 and MUST be documented in the threat model (`SECURITY.md` T-22, T-52, RR-01). Mitigations to evaluate: rounding `tA`/`tB` shown to the other participant to the nearest minute, limiting searches per session (SEC-RL-03). |
+| PRIV-06 | Travel times that could allow trilateration of the other participant's origin, including from the results of a single search, are an accepted residual risk for v1 and MUST be documented in the threat model (`SECURITY.md` T-22, T-52, RR-01). Mitigations: displayed `tA`/`tB` are rounded to the nearest minute ("22 min · 25 min"; difference text uses the rounded values), the Even trip label is computed server-side from unrounded values (`SECURITY.md` SC-PRIV-03), and searches per session are limited (SEC-RL-03). |
 
 ### 6.3 Retention
 
@@ -262,12 +273,12 @@ Location is the most sensitive data Halfsies handles. These requirements apply t
 | Precise starting points | Deleted when the session expires, ends, or the participant leaves |
 | Snapped area label | Deleted with the session record |
 | Search results and cache | 15 minutes cache; result records deleted when the session expires, or when the origin they were computed from is removed or replaced (`SECURITY.md` SC-PRIV-06) |
-| Session and participant records for account holders after expiry | TO BE DECIDED (OD-12) |
+| Session and participant records (all participants, including account holders) | Purged at session expiry; only the Plan summary is kept |
 | Idempotency records | 24 hours (API-05). They never contain secrets (`SECURITY.md` SC-VAL-07) |
 | Plan summary (place name, time) | Retained for account holders until account deletion; deleted with session for guests |
 | Guest identity | Deleted 7 days after session expiry |
 | Security audit logs | 1 year, no precise location |
-| Backups | Rolling 30 days; deletion requests are honored when backups age out |
+| Backups | Rolling 29 days, so deletion requests complete within 30 days (FR-ACC-04) as backups age out |
 
 ### 6.4 Consent and transparency
 
@@ -277,7 +288,7 @@ Location is the most sensitive data Halfsies handles. These requirements apply t
 | PRIV-08 | The in-app "Who can see what" screen (`DESIGN.md` P-4) MUST accurately reflect API behavior. It is covered by an end-to-end test. |
 | PRIV-09 | App Store privacy nutrition labels and the Google Play Data safety form MUST match actual data flows, reviewed each release. |
 | PRIV-10 | Privacy policy MUST address CCPA/CPRA for California users. GDPR compliance is required before any EU launch. |
-| PRIV-11 | Product analytics MUST be first-party or a vendor under a data processing agreement, MUST NOT receive location data, and MUST respect an in-app opt-out. On iOS, no tracking as defined by App Tracking Transparency. |
+| PRIV-11 | v1 ships no product analytics; crash reporting only (OBS-03). When analytics is added, it MUST be first-party or a vendor under a data processing agreement, MUST NOT receive location data, and MUST respect an in-app opt-out. On iOS, no tracking as defined by App Tracking Transparency. |
 
 ---
 
@@ -329,24 +340,11 @@ Each milestone is broken into small, single-responsibility tasks in the issue tr
 | M2 | Sessions and invites (FR-SES, SEC-INV, SEC-AZ), deep links |
 | M3 | Starting points and autocomplete (FR-ORG), privacy snapping (PRIV-03 to PRIV-05) |
 | M4 | Search and ranking (FR-SRCH), provider integrations, cost controls |
-| M5 | Results, proposals, plans (FR-RES), push notifications (FR-NOT) |
+| M5 | Results, proposals, plans (FR-RES), block and report (FR-SAFE), push notifications (FR-NOT) |
 | M6 | Accessibility pass, MASTG testing, DAST, store submission |
 
 ---
 
 ## 11. Open decisions
 
-| ID | Decision | Status | Owner | Needed by |
-|---|---|---|---|---|
-| OD-01 | Native (Swift/Kotlin) versus a single cross-platform framework | Closed by project owner: React Native (`ARCHITECTURE.md` AD-01) | Engineering | M1 |
-| OD-02 | Routing provider and whether transit is in v1 or v1.1 given cost | Proposed: Google Routes API, transit in v1 (AD-10). Product must confirm the cost | Product, Engineering | M4 |
-| OD-03 | Places provider and caching limits under its terms | Proposed: Google Places API (New) (AD-10); retention in `ARCHITECTURE.md` 10.3. Legal must confirm | Engineering, Legal | M4 |
-| OD-04 | DPoP in v1 or deferred with compensating controls (SEC-AUTH-06) | Proposed: ship in v1 (`SECURITY.md` SD-01) | Security | M1 |
-| OD-05 | Final fairness constants (`FAIRNESS_RATIO`, `FAIRNESS_FLOOR_SECONDS`, `W`) after user testing | TO BE DECIDED | Product | M4 |
-| OD-06 | Rounding of `tA`/`tB` shown to the other participant to reduce trilateration risk (PRIV-06). One search yields up to 25 constraints (`SECURITY.md` T-22), so the SD-03 test may call for coarser handling than rounding | Proposed: round both to the nearest minute (`SECURITY.md` SC-PRIV-03, SD-03) | Security, Product | M4 |
-| OD-07 | Hosting region and cloud provider | Cloud closed by project owner: AWS. Region proposed: `us-west-2` (AD-20) | Engineering | M1 |
-| OD-08 | Provider budget values for NFR-COST-02 (per user per day, global per day) | TO BE DECIDED | Product, Engineering | M4 |
-| OD-10 | Does each participant set their own maximum travel time, applied only to their own time, instead of one search-wide value (FR-SRCH-02, `SECURITY.md` T-52, SC-PRIV-08)? | Proposed: per person. TO BE DECIDED | Product, Security | M4 |
-| OD-11 | Minimum user age and store age rating (`SECURITY.md` T-65) | TO BE DECIDED | Product, Legal | M1 |
-| OD-12 | Retention of session and participant records for account holders after a session expires. Section 6.3 covers only the Plan summary (`SECURITY.md` T-61) | TO BE DECIDED | Product, Legal | M2 |
-| OD-09 | Requirement ID scheme: `REQUIREMENT_TEMPLATE.md` uses `REQ-MODULE-###`, while this file uses `FR-*`, `NFR-*`, `API-*`, and similar | TO BE DECIDED | Product, Engineering | M1 |
+No open decisions.
