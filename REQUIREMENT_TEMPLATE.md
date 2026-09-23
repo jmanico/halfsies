@@ -31,7 +31,7 @@ Uppercase normative terms use BCP 14 semantics as defined by RFC 2119 and RFC 81
 
 ## Scope
 
-- **Applies To**: [Web Client | Server-Side Application | API | Background Processing | External Integration | Multiple]
+- **Applies To**: [Mobile App | API | Background Processing | Static Web | External Integration | Multiple]
 - **Components**: [Affected logical components using the names defined in `ARCHITECTURE.md`]
 - **Interfaces / Operations**: [Affected pages, workflows, API operations, events, or commands]
 - **Actors**: [Affected users, roles, service identities, administrators, or external systems]

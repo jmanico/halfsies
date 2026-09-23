@@ -3,9 +3,9 @@
 Version: 1.0.0-draft
 Status: Draft for review
 Scope: iOS app, Android app, and the Halfsies API. No web application in this release.
-Companion docs: `DESIGN.md` (UI rules), `BRAND_GUIDELINES.md` (to be written), `ARCHITECTURE.md` (to be written), `SECURITY.md` (to be written)
+Companion docs: `DESIGN.md` (design language), `ARCHITECTURE.md` (how the system is built), `SECURITY.md` (security requirements, threat model, controls)
 
-Requirement keywords follow RFC 2119. Every requirement has a stable ID. Requirements marked **[AC]** include acceptance criteria that MUST be implemented as automated tests.
+Requirement keywords follow RFC 2119. Every requirement has a stable ID. Requirements marked **[AC]** carry acceptance criteria that are tested per QA-02. Security requirements (`SEC-*`) are defined in `SECURITY.md`.
 
 ---
 
@@ -25,7 +25,7 @@ Two people each enter a starting point. Halfsies returns restaurants and activit
 
 ### 1.2 Out of scope (v1)
 
-- Web application or web client of any kind (the only web-served content is the static files in section 9.6)
+- Web application or web client of any kind (the only web-served content is the static files in INT-06)
 - Sessions with more than two participants
 - Reservations, ticketing, or payments
 - In-app chat
@@ -86,7 +86,7 @@ Two people each enter a starting point. Halfsies returns restaurants and activit
 | FR-SES-05 | Either participant MUST be able to leave a session. Leaving removes that participant's starting point immediately. |
 | FR-SES-06 | Sessions MUST expire at the earlier of: 24 hours after a scheduled meeting time, or 7 days after creation. Expired sessions are read-only for their Plan summary and purge location data per section 6.3. |
 | FR-SES-07 | The Initiator MUST be able to end a session at any time. |
-| FR-SES-08 | Share text for the invite MUST follow `BRAND_GUIDELINES.md` section 6.3 and MUST NOT include either participant's location. |
+| FR-SES-08 | Share text for the invite MUST NOT include either participant's location. Its wording is TO BE DECIDED (`DESIGN.md` DQ-5). |
 
 ### 3.3 Starting points
 
@@ -96,7 +96,7 @@ Two people each enter a starting point. Halfsies returns restaurants and activit
 | FR-ORG-02 | Address search MUST use API-proxied autocomplete (`GET /v1/places/autocomplete`). Minimum 3 characters before a request; client debounce of at least 300 ms. |
 | FR-ORG-03 | Current location MUST be requested only on explicit user action, using "while in use" or one-time permission. The app MUST NOT request background location. |
 | FR-ORG-04 | Each participant selects their own travel mode (drive, transit, walk, bike). Modes MAY differ between participants. |
-| FR-ORG-05 **[AC]** | A participant MUST NOT be able to set or modify the other participant's starting point or mode. AC: `PUT /v1/sessions/{id}/participants/{otherId}/origin` returns 403. |
+| FR-ORG-05 **[AC]** | A participant MUST NOT be able to set or modify the other participant's starting point or mode. AC: `PUT /v1/sessions/{id}/participants/{otherId}/origin` returns 404, because no such route exists (section 4.2). |
 | FR-ORG-06 | Participants MAY change their starting point until a Plan is confirmed. Changing it invalidates existing search results. |
 
 ### 3.4 Search and ranking
@@ -120,7 +120,7 @@ Two people each enter a starting point. Halfsies returns restaurants and activit
 | ID | Requirement |
 |---|---|
 | FR-RES-01 | Each result MUST show place name, category, price level, open status at meeting time, `tA`, `tB`, both mode icons, and the Even trip badge when applicable (`DESIGN.md` R-1, R-2). |
-| FR-RES-02 | Results MUST be viewable as a list and on a map. The list is the accessible equivalent of the map. |
+| FR-RES-02 | Results MUST be viewable as a list and on a map (`DESIGN.md` A-3). |
 | FR-RES-03 | Either participant MAY propose a result. Only one active proposal per session; a new proposal replaces the previous one. |
 | FR-RES-04 **[AC]** | Only the participant who did not create the proposal can accept it. AC: proposer calling accept returns 403. |
 | FR-RES-05 | Accepting a proposal creates the Plan and notifies both participants. |
@@ -223,9 +223,7 @@ Participant-scoped endpoints use `participants/me`. The API MUST NOT expose any 
 
 | ID | Requirement |
 |---|---|
-| NFR-A11Y-01 | Apps MUST meet WCAG 2.2 AA as applied to native apps (W3C guidance on applying WCAG to mobile) and `DESIGN.md` A-1 through A-7. |
-| NFR-A11Y-02 | Support Dynamic Type (iOS) and font scaling (Android) up to 200 percent without clipped text. |
-| NFR-A11Y-03 | Every interactive element has an accessibility label. Travel time pairs are announced as a sentence per `DESIGN.md` A-4. |
+| NFR-A11Y-01 | Apps MUST meet the accessibility target and rules A-1 through A-8 in `DESIGN.md`. |
 | NFR-A11Y-04 | Tested with VoiceOver and TalkBack before each release. |
 
 ### 5.5 Localization
@@ -281,142 +279,19 @@ Location is the most sensitive data Halfsies handles. These requirements apply t
 
 ---
 
-## 7. Security requirements
-
-Baseline standards: OWASP MASVS v2 (mobile apps), OWASP ASVS 5.0 Level 2 (API), OWASP API Security Top 10 2023, RFC 9700 (OAuth 2.0 Security BCP), RFC 8252 (OAuth for native apps), NIST SP 800-63B (authentication), NIST SP 800-207 (Zero Trust principles for service-to-service calls).
-
-### 7.1 Authentication (ASVS V6, V10; MASVS-AUTH)
+## 7. Integrations
 
 | ID | Requirement |
 |---|---|
-| SEC-AUTH-01 | Apps MUST authenticate users via OpenID Connect Authorization Code flow with PKCE (S256), using the system browser or platform auth session (`ASWebAuthenticationSession`, Android Custom Tabs) per RFC 8252. Embedded WebViews for login are prohibited. Sign in with Apple MAY use the native `AuthenticationServices` API. |
-| SEC-AUTH-02 | Implicit grant and Resource Owner Password Credentials grant MUST NOT be used (RFC 9700 sections 2.1.2, 2.4). |
-| SEC-AUTH-03 | The Halfsies API issues its own access and refresh tokens after validating the IdP ID token (signature, `iss`, `aud`, `exp`, `nonce`). Apps MUST NOT send IdP tokens to the API for ongoing authorization. |
-| SEC-AUTH-04 | Access tokens: lifetime at most 15 minutes, audience-restricted to the Halfsies API. |
-| SEC-AUTH-05 **[AC]** | Refresh tokens MUST rotate on every use. Reuse of a previously used refresh token MUST revoke the entire token family (RFC 9700 section 4.14.2). AC: replaying a rotated refresh token returns 401 and invalidates the current token. |
-| SEC-AUTH-06 | Tokens SHOULD be sender-constrained with DPoP (RFC 9449) using a non-exportable key held in Secure Enclave (iOS) or hardware-backed Android Keystore where available. If DPoP is deferred, the decision and compensating controls are recorded in `SECURITY.md`. |
-| SEC-AUTH-07 | Refresh token absolute lifetime: 30 days for accounts, session lifetime for guests. |
-| SEC-AUTH-08 | Sign-out MUST revoke the refresh token server-side and delete local credentials. |
-
-### 7.2 Invite tokens and guest access
-
-| ID | Requirement |
-|---|---|
-| SEC-INV-01 | Invite tokens MUST contain at least 128 bits of entropy from a CSPRNG. |
-| SEC-INV-02 | The API MUST store only a hash (SHA-256) of invite tokens and compare in constant time. |
-| SEC-INV-03 | Invite links MUST use Universal Links (iOS) and verified Android App Links. Custom URL schemes MUST NOT carry invite tokens, since any app can register them. |
-| SEC-INV-04 | Redemption issues guest credentials scoped to exactly one session, following SEC-AUTH-04 through SEC-AUTH-06. |
-| SEC-INV-05 | Invite redemption is rate limited per SEC-RL-02 and all failed redemptions are logged as security events. |
-| SEC-INV-06 | The invite token MUST be removed from app navigation state and not persisted after redemption. |
-
-### 7.3 Authorization (ASVS V8; API Top 10 API1, API3, API5)
-
-| ID | Requirement |
-|---|---|
-| SEC-AZ-01 **[AC]** | Every session-scoped endpoint MUST verify the caller is a current participant of that session, enforced in a single shared authorization layer, deny by default. AC: for every endpoint in section 4.2, an automated test calls it with a valid token from a non-participant and expects 404 (to avoid confirming existence). |
-| SEC-AZ-02 | Initiator-only actions (end session, manage invites) MUST check the participant role server-side. |
-| SEC-AZ-03 | Guest credentials MUST NOT access any `/v1/me` account endpoint except as defined for guest upgrade. |
-| SEC-AZ-04 | Authorization decisions MUST NOT rely on client-supplied role or participant fields. |
-
-### 7.4 Input validation (ASVS V1, V2; API Top 10 API8)
-
-| ID | Requirement |
-|---|---|
-| SEC-VAL-01 | All request bodies MUST be validated against the OpenAPI schema with unknown properties rejected (`additionalProperties: false`). |
-| SEC-VAL-02 | Latitude in [-90, 90], longitude in [-180, 180], finite numbers only. Travel mode, category, and price are enums. |
-| SEC-VAL-03 | Strings have maximum lengths: display name 50, autocomplete query 120, area label 80. Display names are Unicode-normalized (NFC) and stripped of control and bidi override characters. |
-| SEC-VAL-04 | Meeting time MUST be within [now minus 5 minutes, now plus 14 days]. |
-| SEC-VAL-05 | Database access MUST use parameterized queries or a query builder that parameterizes by default. |
-
-### 7.5 Rate limiting and abuse (API Top 10 API4, API6)
-
-| ID | Requirement |
-|---|---|
-| SEC-RL-01 | Per-token and per-IP rate limits on all endpoints, returning 429 with `Retry-After`. |
-| SEC-RL-02 | Invite redemption: maximum 10 attempts per IP per hour and 5 failures per session before the invite is revoked. |
-| SEC-RL-03 | Searches: maximum 20 per session per hour. Autocomplete: maximum 60 per minute per user. |
-| SEC-RL-04 | Account creation and session creation limits per account and device to deter automated abuse. |
-| SEC-RL-05 | The API SHOULD verify app integrity using App Attest (iOS) and Play Integrity API (Android) on session creation, invite redemption, and search. Failed attestation increases rate-limit strictness; it MUST NOT be the sole control. |
-
-### 7.6 Transport (ASVS V12; MASVS-NETWORK)
-
-| ID | Requirement |
-|---|---|
-| SEC-TLS-01 | All traffic uses TLS 1.2 or higher; TLS 1.3 preferred. The API domain sends HSTS. |
-| SEC-TLS-02 | iOS App Transport Security MUST NOT be disabled. Android `usesCleartextTraffic` MUST be false via Network Security Config. |
-| SEC-TLS-03 | Certificate pinning MAY be implemented. If implemented, it MUST pin to public keys with at least one backup pin and include a remote-configurable kill switch process documented in `SECURITY.md`. |
-
-### 7.7 Mobile data storage (MASVS-STORAGE, MASVS-CRYPTO)
-
-| ID | Requirement |
-|---|---|
-| SEC-MOB-01 | Tokens and DPoP keys MUST be stored in the iOS Keychain (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` or stricter) and Android Keystore-backed encrypted storage. Never in plain preferences, files, or logs. |
-| SEC-MOB-02 | Precise starting points MUST NOT be persisted on device beyond the active session. |
-| SEC-MOB-03 | Credentials and session data MUST be excluded from cloud and device backups. |
-| SEC-MOB-04 | Release builds MUST disable debug logging, debuggable flags, and developer menus. |
-| SEC-MOB-05 | Clipboard MUST NOT be used for tokens. Invite links are shared only through the OS share sheet. |
-| SEC-MOB-06 | Deep link handlers MUST validate host, path, and parameters against an allowlist and ignore unknown parameters. |
-
-### 7.8 Secrets and third-party APIs (API Top 10 API10)
-
-| ID | Requirement |
-|---|---|
-| SEC-SEC-01 | Place, routing, and geocoding provider API keys MUST live only on the server, loaded from a secrets manager. |
-| SEC-SEC-02 | The only keys permitted in the app are map SDK display keys, restricted by bundle ID and Android package name plus signing certificate fingerprint, with usage quotas set. |
-| SEC-SEC-03 | Provider responses MUST be validated against expected schemas before use. Malformed responses are dropped and logged. Provider-supplied URLs (photos, websites) are validated as `https` before being returned to clients. |
-| SEC-SEC-04 | Secrets MUST NOT be committed. CI runs secret scanning on every push and blocks merges on findings. |
-
-### 7.9 Logging and monitoring (ASVS V16)
-
-| ID | Requirement |
-|---|---|
-| SEC-LOG-01 | Security events are logged with timestamp, correlation ID, actor ID, and outcome: sign-in, token refresh failure, token reuse detection, invite created/redeemed/failed/revoked, authorization failures, rate-limit triggers, account deletion. |
-| SEC-LOG-02 | Logs MUST comply with PRIV-05. Tokens, invite tokens, and authorization headers MUST be redacted. |
-| SEC-LOG-03 | Alerts fire on refresh token reuse, spikes in authorization failures, and invite brute-force patterns. |
-
-### 7.10 Supply chain
-
-| ID | Requirement |
-|---|---|
-| SEC-SC-01 | Every third-party dependency (app and API) requires a documented review before adoption: known CVEs, maintenance activity, patch cadence, license, and transitive dependency count. Reviews are recorded in `DEPENDENCIES.md`. |
-| SEC-SC-02 | Dependencies are version-pinned with lockfiles. Software composition analysis runs in CI and blocks on critical or high vulnerabilities without a documented exception. |
-| SEC-SC-03 | Each release produces an SBOM (CycloneDX or SPDX) for both apps and the API. |
-| SEC-SC-04 | Release builds are produced only by CI from protected branches. App signing keys are held in platform-managed signing (App Store Connect, Play App Signing) or an HSM-backed store. |
-
----
-
-## 8. Data model (logical)
-
-| Entity | Key fields | Notes |
-|---|---|---|
-| User | id, idpSubject, idpProvider, displayName, color, email?, createdAt | Accounts only |
-| Guest | id, sessionId, displayName, createdAt | Scoped to one session |
-| Session | id, initiatorUserId, status, meetingTime?, createdAt, expiresAt | status: open, planned, ended, expired |
-| Invite | id, sessionId, tokenHash, expiresAt, redeemedAt?, revokedAt? | |
-| Participant | id, sessionId, userId or guestId, role (A or B), mode, originEncrypted?, areaLabel?, joinedAt | origin encrypted per PRIV-04 |
-| Search | id, sessionId, inputHash, filters, createdAt, expiresAt | |
-| Result | searchId, placeId, name, category, priceLevel, lat, lng, tA, tB, even, score, rank | Provider-cacheable fields only |
-| Proposal | id, sessionId, placeId, proposedBy, status, createdAt | |
-| Plan | sessionId, placeId, placeName, meetingTime, confirmedAt | |
-| Device | id, participantOrUserId, platform, pushToken, createdAt | |
-| RefreshToken | id, family, subjectId, tokenHash, dpopJkt?, expiresAt, usedAt?, revokedAt? | |
-
----
-
-## 9. Integrations
-
-| ID | Requirement |
-|---|---|
-| INT-01 | Routing provider: MUST support travel time matrices for drive, transit, walk, and bike with departure time. Selection recorded in `ARCHITECTURE.md`. Candidates: Google Routes API, Mapbox Matrix API, self-hosted Valhalla or OSRM (transit requires GTFS-capable engine such as OpenTripPlanner). |
-| INT-02 | Places provider: MUST support category search, opening hours, and price level. Candidates: Google Places API, Foursquare Places API. |
+| INT-01 | Routing provider: MUST support travel time matrices for drive, transit, walk, and bike with departure time. Selection and alternatives are recorded in `ARCHITECTURE.md`. |
+| INT-02 | Places provider: MUST support category search, opening hours, and price level. |
 | INT-03 | Provider access MUST be behind internal interfaces so providers can be swapped without API contract changes. |
 | INT-04 | Push: APNs (token-based auth) and Firebase Cloud Messaging HTTP v1. |
-| INT-05 | Identity: Sign in with Apple, Google Identity (OIDC). |
-| INT-06 | The only web-served content is `/.well-known/apple-app-site-association`, `/.well-known/assetlinks.json`, the privacy policy, terms, and a static invite fallback page linking to app stores. The fallback page MUST NOT read or render the invite token. |
+| INT-06 | The only web-served content is `/.well-known/apple-app-site-association`, `/.well-known/assetlinks.json`, the privacy policy, terms, and a static invite fallback page linking to app stores (constraints: `SECURITY.md` SC-WEB-01, SC-WEB-02). |
 
 ---
 
-## 10. Quality gates
+## 8. Quality gates
 
 | ID | Requirement |
 |---|---|
@@ -432,7 +307,7 @@ Baseline standards: OWASP MASVS v2 (mobile apps), OWASP ASVS 5.0 Level 2 (API), 
 
 ---
 
-## 11. Observability
+## 9. Observability
 
 | ID | Requirement |
 |---|---|
@@ -442,7 +317,7 @@ Baseline standards: OWASP MASVS v2 (mobile apps), OWASP ASVS 5.0 Level 2 (API), 
 
 ---
 
-## 12. Delivery milestones
+## 10. Delivery milestones
 
 Each milestone is broken into small, single-responsibility tasks in the issue tracker. Each task references requirement IDs.
 
@@ -457,14 +332,16 @@ Each milestone is broken into small, single-responsibility tasks in the issue tr
 
 ---
 
-## 13. Open decisions
+## 11. Open decisions
 
-| ID | Decision | Owner | Needed by |
-|---|---|---|---|
-| OD-01 | Native (Swift/Kotlin) versus a single cross-platform framework | Engineering | M1 |
-| OD-02 | Routing provider and whether transit is in v1 or v1.1 given cost | Product, Engineering | M4 |
-| OD-03 | Places provider and caching limits under its terms | Engineering, Legal | M4 |
-| OD-04 | DPoP in v1 or deferred with compensating controls (SEC-AUTH-06) | Security | M1 |
-| OD-05 | Final fairness constants (`FAIRNESS_RATIO`, `FAIRNESS_FLOOR_SECONDS`, `W`) after user testing | Product | M4 |
-| OD-06 | Rounding of `tA`/`tB` shown to the other participant to reduce trilateration risk (PRIV-06) | Security, Product | M4 |
-| OD-07 | Hosting region and cloud provider | Engineering | M1 |
+| ID | Decision | Status | Owner | Needed by |
+|---|---|---|---|---|
+| OD-01 | Native (Swift/Kotlin) versus a single cross-platform framework | Closed by project owner: React Native (`ARCHITECTURE.md` AD-01) | Engineering | M1 |
+| OD-02 | Routing provider and whether transit is in v1 or v1.1 given cost | Proposed: Google Routes API, transit in v1 (AD-10). Product must confirm the cost | Product, Engineering | M4 |
+| OD-03 | Places provider and caching limits under its terms | Proposed: Google Places API (New) (AD-10); retention in `ARCHITECTURE.md` 10.3. Legal must confirm | Engineering, Legal | M4 |
+| OD-04 | DPoP in v1 or deferred with compensating controls (SEC-AUTH-06) | Proposed: ship in v1 (`SECURITY.md` SD-01) | Security | M1 |
+| OD-05 | Final fairness constants (`FAIRNESS_RATIO`, `FAIRNESS_FLOOR_SECONDS`, `W`) after user testing | TO BE DECIDED | Product | M4 |
+| OD-06 | Rounding of `tA`/`tB` shown to the other participant to reduce trilateration risk (PRIV-06) | Proposed: round both to the nearest minute (`SECURITY.md` SC-PRIV-03, SD-03) | Security, Product | M4 |
+| OD-07 | Hosting region and cloud provider | Cloud closed by project owner: AWS. Region proposed: `us-west-2` (AD-20) | Engineering | M1 |
+| OD-08 | Provider budget values for NFR-COST-02 (per user per day, global per day) | TO BE DECIDED | Product, Engineering | M4 |
+| OD-09 | Requirement ID scheme: `REQUIREMENT_TEMPLATE.md` uses `REQ-MODULE-###`, while this file uses `FR-*`, `NFR-*`, `API-*`, and similar | TO BE DECIDED | Product, Engineering | M1 |
