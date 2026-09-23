@@ -3,7 +3,7 @@
 Version: 1.0.0-draft
 Status: Draft for review
 Scope: iOS app, Android app, and the Halfsies API. No web application in this release.
-Companion docs: `DESIGN.md` (UI rules), `BRAND_GUIDELINES.md`, `ARCHITECTURE.md` (to be written), `SECURITY.md` (to be written)
+Companion docs: `DESIGN.md` (UI rules), `BRAND_GUIDELINES.md` (to be written), `ARCHITECTURE.md` (to be written), `SECURITY.md` (to be written)
 
 Requirement keywords follow RFC 2119. Every requirement has a stable ID. Requirements marked **[AC]** include acceptance criteria that MUST be implemented as automated tests.
 
@@ -119,7 +119,7 @@ Two people each enter a starting point. Halfsies returns restaurants and activit
 
 | ID | Requirement |
 |---|---|
-| FR-RES-01 | Each result MUST show place name, category, price level, open status at meeting time, `tA`, `tB`, both mode icons, and the Even trip badge when applicable (`DESIGN.md` 5.2). |
+| FR-RES-01 | Each result MUST show place name, category, price level, open status at meeting time, `tA`, `tB`, both mode icons, and the Even trip badge when applicable (`DESIGN.md` R-1, R-2). |
 | FR-RES-02 | Results MUST be viewable as a list and on a map. The list is the accessible equivalent of the map. |
 | FR-RES-03 | Either participant MAY propose a result. Only one active proposal per session; a new proposal replaces the previous one. |
 | FR-RES-04 **[AC]** | Only the participant who did not create the proposal can accept it. AC: proposer calling accept returns 403. |
@@ -223,7 +223,7 @@ Participant-scoped endpoints use `participants/me`. The API MUST NOT expose any 
 
 | ID | Requirement |
 |---|---|
-| NFR-A11Y-01 | Apps MUST meet WCAG 2.2 AA as applied to native apps (W3C guidance on applying WCAG to mobile) and `DESIGN.md` section 8. |
+| NFR-A11Y-01 | Apps MUST meet WCAG 2.2 AA as applied to native apps (W3C guidance on applying WCAG to mobile) and `DESIGN.md` A-1 through A-7. |
 | NFR-A11Y-02 | Support Dynamic Type (iOS) and font scaling (Android) up to 200 percent without clipped text. |
 | NFR-A11Y-03 | Every interactive element has an accessibility label. Travel time pairs are announced as a sentence per `DESIGN.md` A-4. |
 | NFR-A11Y-04 | Tested with VoiceOver and TalkBack before each release. |
