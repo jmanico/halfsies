@@ -268,7 +268,7 @@ flowchart LR
 1. **App version gate** (API-07). The minimum version per platform is read from SSM Parameter Store.
 2. **Correlation ID.** The ID is generated on the server, returned as `X-Correlation-Id`, and propagated through W3C `traceparent` (OBS-01).
 3. **Per-IP rate limit** (SEC-RL-01). Redis token bucket. This backs up the coarser WAF rule.
-4. **Authentication.** Access token and DPoP proof (SEC-AUTH-04, SEC-AUTH-06).
+4. **Authentication.** Access token and DPoP proof (SEC-AUTH-04, SEC-AUTH-06). The expected `htu` comes from configuration, never from request headers (SC-AUTH-10).
 5. **Per-token rate limit** (SEC-RL-01, SEC-RL-03). Stricter buckets apply when attestation has failed (SEC-RL-05).
 6. **Schema validation** against the OpenAPI operation.
 7. **Authorization.** Each route declares a policy, and one shared guard enforces it (SEC-AZ-01, SC-AZ-02, SEC-AZ-04).
@@ -307,6 +307,8 @@ These follow from the design above. They go into `openapi.yaml` without adding e
 - `POST /v1/sessions/{id}/searches` runs the search synchronously and returns `201` with the results. `GET .../searches/{searchId}` returns stored results to either participant, for example after a "results ready" push.
 - `POST /v1/devices` carries the per-device notification preferences used for FR-NOT-04. Re-registering updates them.
 - `GET /v1/sessions/{id}` supports `ETag` and `If-None-Match`.
+- `POST .../proposals` takes `{ searchId, placeId }`; the server copies the place name and coordinate from the stored result (SC-VAL-08).
+- `POST /v1/invites/redeem` issues guest credentials only; a signed-in invitee authenticates the request and gets no new tokens (SC-AUTH-11).
 - `POST /v1/auth/token` carries a `grant_type` of `authorization_code`, `refresh_token`, or `guest_upgrade` (SC-AUTH-08).
 
 ---
@@ -335,7 +337,7 @@ EventBridge Scheduler places a message on `maintenance` for each job. Jobs are i
 
 | Job | Schedule | Action | Requirement |
 |---|---|---|---|
-| Expire sessions | every 1 min | Set `status = expired` where `expires_at <= now()`. Null the origin ciphertext and snapped fields. Delete searches and results | FR-SES-06, section 6.3 |
+| Expire sessions | every 1 min | Set `status = expired` where `expires_at <= now()`. Null the origin ciphertext and snapped fields, and delete searches and results, for every `ended` or `expired` session that still has them (SC-AZ-04) | FR-SES-06, section 6.3 |
 | Ending-soon reminder | every 5 min | Emit `session_ending_soon` once per session, a configurable lead time before expiry | FR-NOT-01 |
 | Expire searches | every 1 min | Delete searches and results past `expires_at` | FR-SRCH-11 |
 | Purge guests | hourly | Delete guest rows past their retention | section 6.3 |
@@ -390,7 +392,7 @@ erDiagram
 | `results` | `search_id`, `rank`, `place_id`, `name`, `category`, `price_level`, `open_at_meeting`, `lat`, `lng`, `t_a`, `t_b`, `even`, `score`, `rating?` | PK (`search_id`, `rank`). Provider-cacheable fields only (section 10.3) |
 | `proposals` | `id`, `session_id`, `place_id`, `place_name`, `place_lat`, `place_lng`, `proposed_by`, `status`, `created_at` | **partial unique index on (`session_id`) where `status = 'active'`** (FR-RES-03) |
 | `plans` | `session_id` (PK), `place_id`, `place_name`, `place_lat?`, `place_lng?`, `meeting_time`, `confirmed_at` | |
-| `devices` | `id`, `user_id?`, `participant_id?`, `platform`, `push_token`, `prefs jsonb`, `created_at` | unique (`platform`, `push_token`) |
+| `devices` | `id`, `user_id?`, `participant_id?`, `refresh_family_id` (SC-NOT-03), `platform`, `push_token`, `prefs jsonb`, `created_at` | unique (`platform`, `push_token`) |
 | `refresh_tokens` | `id`, `family_id`, `subject_type`, `subject_id`, `token_hash bytea`, `dpop_jkt?`, `expires_at`, `family_expires_at`, `used_at?`, `revoked_at?` | unique (`token_hash`); index (`family_id`); index (`subject_id`) |
 | `idempotency_keys` | `subject_id`, `key`, `request_hash`, `status_code`, `response_body jsonb`, `created_at` | PK (`subject_id`, `key`) |
 | `outbox` | `id`, `event_type`, `payload jsonb`, `created_at`, `sent_at?` | partial index on unsent rows |
@@ -404,7 +406,7 @@ Rules enforced in SQL rather than only in code:
 
 ### 7.3 Redis usage
 
-Redis holds only disposable state. Losing it degrades rate limiting and replay protection for a short window but loses no user data.
+Redis holds only disposable state. Losing it loses no user data. Security keys are not evictable, and the denylist and replay checks fail closed on sensitive routes (SC-AUTH-12). Behavior on other routes is open (SQ-23).
 
 | Key pattern | Purpose | TTL |
 |---|---|---|
@@ -424,7 +426,7 @@ For `POST` endpoints that create resources, the `Idempotency-Key` header is stor
 - The same key with a different body returns `422`.
 - A key that is still in flight returns `409`.
 
-Keys expire per API-05. Stored response bodies never contain precise origins: origins are only ever set by `PUT`, and no `POST` response echoes them.
+Responses that carry secrets are never stored (SC-VAL-07). Keys expire per API-05. Stored response bodies never contain precise origins: origins are only ever set by `PUT`, and no `POST` response echoes them.
 
 ### 7.5 Location data handling (PRIV-03, PRIV-04)
 
@@ -475,7 +477,7 @@ sequenceDiagram
     API-->>App: new access token and refresh token
 ```
 
-The API redeems the authorization code **itself**, acting as a confidential client of each IdP (SD-05). On iOS, Sign in with Apple uses `AuthenticationServices` natively and sends the returned authorization code through the same endpoint. On Android, Sign in with Apple uses Apple's web flow through Custom Tabs, with an `https` App Link redirect and no name or email scopes, so that `response_mode=query` works. Whether that flow meets SEC-AUTH-01 is open (SQ-05).
+The API redeems the authorization code **itself**, acting as a confidential client of each IdP (SD-05). On iOS, Sign in with Apple uses `AuthenticationServices` natively and sends the returned authorization code through the same endpoint. On Android, Sign in with Apple uses Apple's web flow through Custom Tabs, with an `https` App Link redirect and no name or email scopes, so that `response_mode=query` works. Whether that flow meets SEC-AUTH-01 is open (SQ-05). The app supplies the `nonce`, so the API binds it per SC-AUTH-09 until SQ-19 is resolved.
 
 ### 8.2 Create session, invite, and redeem
 
@@ -506,7 +508,7 @@ sequenceDiagram
 
 ### 8.3 Set a starting point
 
-`PUT .../participants/me/origin`: the route resolves the participant from the token subject, never from the path (FR-ORG-05). The handler validates, resolves, snaps, labels, and encrypts (section 7.5). It then marks any unexpired searches for the session as stale (FR-ORG-06), increments `sessions.version`, and commits.
+`PUT .../participants/me/origin`: the route resolves the participant from the token subject, never from the path (FR-ORG-05). The handler validates, resolves, snaps, labels, and encrypts (section 7.5). It then deletes any searches for the session computed from the previous origin (FR-ORG-06, SC-PRIV-06), increments `sessions.version`, and commits.
 
 ### 8.4 Search
 

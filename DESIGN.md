@@ -120,8 +120,8 @@ Weights: 400 regular, 600 semibold, 700 bold.
 **Person markers.** Person markers are 32 circles with a white ring. Person A: `person-a` fill with a `text` letter. Person B: `person-b` fill with a white letter. Meeting places use a `primary` pin. The other person's marker uses the snapped position and area label the API returns (API-SHP-01).
 
 **Privacy patterns.**
-- P-2: The pre-prompt PRIV-07 requires explains why the permission is needed. Location copy: "Halfsies uses your location to calculate travel times. The other person sees only your general area, never your exact location." Decline has the same visual weight as accept.
-- P-4: A persistent "Who can see what" row on the session screen opens a plain-language summary (PRIV-08).
+- P-2: The pre-prompt PRIV-07 requires explains why the permission is needed. Location copy: "Halfsies uses your location to calculate travel times. The other person sees only your general area, never your exact location." Decline has the same visual weight as accept. The copy MUST meet `SECURITY.md` SC-PRIV-11, and this wording is under review (DQ-8).
+- P-4: A persistent "Who can see what" row on the session screen opens a plain-language summary (PRIV-08). The summary MUST say that the other person sees your travel time to each result (`SECURITY.md` SC-PRIV-11).
 
 ## Accessibility
 
@@ -144,4 +144,5 @@ Target: WCAG 2.2 AA, applied to native apps per the W3C guidance on applying WCA
 - DQ-4: Should there be brand typefaces, or do we keep system fonts? The initial draft proposed Bricolage Grotesque for headings and Atkinson Hyperlegible Next for body text (both OFL 1.1). If adopted, they must be bundled in the apps, support tabular numerals, and scale with Dynamic Type.
 - DQ-5: Who owns brand voice and the invite share text wording (FR-SES-08)? Does it live in this file or in a separate brand guide?
 - DQ-6: If displayed travel times are rounded (OD-06), how do the travel pair and the R-3 difference text read?
+- DQ-8: How should P-2 and P-4 describe travel-time exposure without overclaiming ("never your exact location") or alarming users (`SECURITY.md` T-22, T-62)? TO BE DECIDED.
 - DQ-7: What are the mode and category icons? No icon set has been chosen. Candidates must be open-licensed.

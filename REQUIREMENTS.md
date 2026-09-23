@@ -104,7 +104,7 @@ Two people each enter a starting point. Halfsies returns restaurants and activit
 | ID | Requirement |
 |---|---|
 | FR-SRCH-01 | Search runs only when both participants have set a starting point and mode. |
-| FR-SRCH-02 | Filters: category (multi-select), open at meeting time, price level, maximum travel time per person (default 60 minutes, range 10 to 120). |
+| FR-SRCH-02 | Filters: category (multi-select), open at meeting time, price level, maximum travel time per person (default 60 minutes, range 10 to 120). Who sets the maximum travel time is open (OD-10; `SECURITY.md` T-52). |
 | FR-SRCH-03 | Meeting time: "now" or a scheduled time up to 14 days ahead. Travel time estimates MUST use the meeting time for transit schedules and traffic where the provider supports it. |
 | FR-SRCH-04 | Candidate generation MUST NOT rely only on the geographic midpoint. It MUST sample candidates from the region where both participants' reachable areas overlap (for example, intersecting isochrones, or a search area around multiple points along the travel-time-balanced region). The method is documented in `ARCHITECTURE.md`. |
 | FR-SRCH-05 **[AC]** | For each candidate the API MUST compute `tA` and `tB` using each participant's own mode and the meeting time. AC: fixture test with known matrix returns expected `tA`, `tB` per candidate. |
@@ -121,7 +121,7 @@ Two people each enter a starting point. Halfsies returns restaurants and activit
 |---|---|
 | FR-RES-01 | Each result MUST show place name, category, price level, open status at meeting time, `tA`, `tB`, both mode icons, and the Even trip badge when applicable (`DESIGN.md` R-1, R-2). |
 | FR-RES-02 | Results MUST be viewable as a list and on a map (`DESIGN.md` A-3). |
-| FR-RES-03 | Either participant MAY propose a result. Only one active proposal per session; a new proposal replaces the previous one. |
+| FR-RES-03 | Either participant MAY propose a result. Only one active proposal per session; a new proposal replaces the previous one. A proposal names a result from the session's current search (`SECURITY.md` SC-VAL-08). |
 | FR-RES-04 **[AC]** | Only the participant who did not create the proposal can accept it. AC: proposer calling accept returns 403. |
 | FR-RES-05 | Accepting a proposal creates the Plan and notifies both participants. |
 | FR-RES-06 | From a Plan, each participant MUST be able to open directions in Apple Maps or Google Maps using the place coordinate as destination. The deep link MUST NOT include the other participant's starting point. |
@@ -148,7 +148,7 @@ Two people each enter a starting point. Halfsies returns restaurants and activit
 | API-02 | All endpoints are under `/v1`. Breaking changes require `/v2`. The API MUST support at least the two most recent released app versions. |
 | API-03 | Request and response bodies are JSON (`application/json`, UTF-8). |
 | API-04 | Errors MUST use RFC 9457 Problem Details (`application/problem+json`). Error responses MUST NOT include stack traces, SQL, provider responses, or internal hostnames. |
-| API-05 | All `POST` endpoints that create resources MUST accept an `Idempotency-Key` header and return the original response for repeated keys within 24 hours. |
+| API-05 | All `POST` endpoints that create resources MUST accept an `Idempotency-Key` header and return the original response for repeated keys within 24 hours. How this applies to responses that carry secrets is open (`SECURITY.md` SQ-22); until it is resolved, SC-VAL-07 applies. |
 | API-06 | Resource identifiers MUST be random and non-sequential (UUIDv4 or 128-bit random). |
 | API-07 | The API MUST reject requests from app versions below a configured minimum with 426 and a Problem Details body the app uses to prompt an update. |
 
@@ -253,7 +253,7 @@ Location is the most sensitive data Halfsies handles. These requirements apply t
 | PRIV-03 **[AC]** | The other participant's starting point MUST be snapped server-side before it is sent to any client: coordinates rounded to the center of a geohash precision 6 cell, plus a neighborhood or locality label. AC: property test over 10,000 random coordinates verifies returned approx coordinate is the geohash-6 cell center and no response field reveals the raw coordinate. |
 | PRIV-04 | Precise starting point coordinates MUST be encrypted at rest with a key separate from general database encryption (application-level or column-level encryption). |
 | PRIV-05 **[AC]** | Precise coordinates and addresses MUST NOT appear in application logs, traces, metrics labels, analytics events, crash reports, or error messages. AC: log-scrubbing test injects known coordinates into a full session flow and asserts zero matches across captured log and trace output. |
-| PRIV-06 | Travel times that could allow trilateration of the other participant's origin are an accepted residual risk for v1 and MUST be documented in the threat model. Mitigations to evaluate: rounding `tA`/`tB` shown to the other participant to the nearest minute, limiting searches per session (SEC-RL-03). |
+| PRIV-06 | Travel times that could allow trilateration of the other participant's origin, including from the results of a single search, are an accepted residual risk for v1 and MUST be documented in the threat model (`SECURITY.md` T-22, T-52, RR-01). Mitigations to evaluate: rounding `tA`/`tB` shown to the other participant to the nearest minute, limiting searches per session (SEC-RL-03). |
 
 ### 6.3 Retention
 
@@ -261,7 +261,9 @@ Location is the most sensitive data Halfsies handles. These requirements apply t
 |---|---|
 | Precise starting points | Deleted when the session expires, ends, or the participant leaves |
 | Snapped area label | Deleted with the session record |
-| Search results and cache | 15 minutes cache; result records deleted when the session expires |
+| Search results and cache | 15 minutes cache; result records deleted when the session expires, or when the origin they were computed from is removed or replaced (`SECURITY.md` SC-PRIV-06) |
+| Session and participant records for account holders after expiry | TO BE DECIDED (OD-12) |
+| Idempotency records | 24 hours (API-05). They never contain secrets (`SECURITY.md` SC-VAL-07) |
 | Plan summary (place name, time) | Retained for account holders until account deletion; deleted with session for guests |
 | Guest identity | Deleted 7 days after session expiry |
 | Security audit logs | 1 year, no precise location |
@@ -341,7 +343,10 @@ Each milestone is broken into small, single-responsibility tasks in the issue tr
 | OD-03 | Places provider and caching limits under its terms | Proposed: Google Places API (New) (AD-10); retention in `ARCHITECTURE.md` 10.3. Legal must confirm | Engineering, Legal | M4 |
 | OD-04 | DPoP in v1 or deferred with compensating controls (SEC-AUTH-06) | Proposed: ship in v1 (`SECURITY.md` SD-01) | Security | M1 |
 | OD-05 | Final fairness constants (`FAIRNESS_RATIO`, `FAIRNESS_FLOOR_SECONDS`, `W`) after user testing | TO BE DECIDED | Product | M4 |
-| OD-06 | Rounding of `tA`/`tB` shown to the other participant to reduce trilateration risk (PRIV-06) | Proposed: round both to the nearest minute (`SECURITY.md` SC-PRIV-03, SD-03) | Security, Product | M4 |
+| OD-06 | Rounding of `tA`/`tB` shown to the other participant to reduce trilateration risk (PRIV-06). One search yields up to 25 constraints (`SECURITY.md` T-22), so the SD-03 test may call for coarser handling than rounding | Proposed: round both to the nearest minute (`SECURITY.md` SC-PRIV-03, SD-03) | Security, Product | M4 |
 | OD-07 | Hosting region and cloud provider | Cloud closed by project owner: AWS. Region proposed: `us-west-2` (AD-20) | Engineering | M1 |
 | OD-08 | Provider budget values for NFR-COST-02 (per user per day, global per day) | TO BE DECIDED | Product, Engineering | M4 |
+| OD-10 | Does each participant set their own maximum travel time, applied only to their own time, instead of one search-wide value (FR-SRCH-02, `SECURITY.md` T-52, SC-PRIV-08)? | Proposed: per person. TO BE DECIDED | Product, Security | M4 |
+| OD-11 | Minimum user age and store age rating (`SECURITY.md` T-65) | TO BE DECIDED | Product, Legal | M1 |
+| OD-12 | Retention of session and participant records for account holders after a session expires. Section 6.3 covers only the Plan summary (`SECURITY.md` T-61) | TO BE DECIDED | Product, Legal | M2 |
 | OD-09 | Requirement ID scheme: `REQUIREMENT_TEMPLATE.md` uses `REQ-MODULE-###`, while this file uses `FR-*`, `NFR-*`, `API-*`, and similar | TO BE DECIDED | Product, Engineering | M1 |
