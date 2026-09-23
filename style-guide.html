@@ -21,6 +21,22 @@
   --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px;
   --radius-pill: 999px; --radius-card: 12px; --radius-input: 8px; --radius-sheet: 24px;
   --focus: 2px solid var(--primary);
+  --on-primary: #FFFFFF; --on-person-b: #FFFFFF; --wordmark: #161A3D; --map-bg: #EEF0F5;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #C9CCF2; --primary-hover: #B3B7EA;
+    --secondary: #A9AEC4;
+    --background: #161A3D; --surface: #20254D;
+    --text: #F2F3F8;
+    --error: #FF8A80; --error-tint: #3A1F2E;
+    --success: #5FD19A; --success-tint: #173A2E;
+    --person-a: #FF7A1A; --person-a-text: #FF9A4D;
+    --person-b: #A69CFF; --person-b-hover: #B8B0FF;
+    --divider: #2E3460;
+    --on-primary: #161A3D; --on-person-b: #161A3D; --wordmark: #F2F3F8; --map-bg: #0E1130;
+  }
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--background); color: var(--text); font: 400 16px/24px var(--font); }
@@ -34,7 +50,6 @@ p { margin: 0 0 var(--space-3); }
 .small { font-size: 14px; line-height: 20px; }
 code { font-size: 14px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.provisional { display: inline-block; margin-left: var(--space-2); padding: 0 var(--space-2); border: 1px solid var(--secondary); border-radius: var(--radius-pill); color: var(--secondary); font-size: 12px; line-height: 20px; font-weight: 600; vertical-align: middle; }
 .note { background: var(--surface); border-left: 4px solid var(--secondary); padding: var(--space-3) var(--space-4); border-radius: 0 var(--radius-input) var(--radius-input) 0; }
 
 /* Logo */
@@ -62,7 +77,7 @@ code { font-size: 14px; }
 .btn-row { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .btn { min-height: 48px; min-width: 48px; padding: 0 var(--space-5); border-radius: var(--radius-pill); font: 600 16px/24px var(--font); cursor: pointer; border: 1.5px solid transparent; transition: background-color 150ms, color 150ms; }
 .btn:focus-visible, a:focus-visible, input:focus-visible, .chip:focus-visible { outline: var(--focus); outline-offset: 2px; }
-.btn-primary { background: var(--primary); color: #FFFFFF; }
+.btn-primary { background: var(--primary); color: var(--on-primary); }
 .btn-primary:hover { background: var(--primary-hover); }
 .btn-secondary { background: transparent; color: var(--primary); border-color: var(--primary); }
 .btn-secondary:hover { background: var(--surface); box-shadow: inset 0 0 0 1px var(--primary); }
@@ -91,10 +106,10 @@ a:hover { text-decoration-thickness: 2px; }
 
 /* Person markers */
 .marker { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 3px solid #FFFFFF; box-shadow: 0 2px 4px rgba(22,26,61,0.3); font-weight: 700; font-size: 14px; flex: none; }
-.marker-a { background: var(--person-a); color: var(--text); }
-.marker-b { background: var(--person-b); color: #FFFFFF; }
+.marker-a { background: var(--person-a); color: #161A3D; }
+.marker-b { background: var(--person-b); color: var(--on-person-b); }
 .marker-mid { width: 20px; height: 20px; border-width: 4px; background: var(--primary); }
-.marker-row { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; padding: var(--space-4); background: #EEF0F5; border-radius: var(--radius-card); }
+.marker-row { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; padding: var(--space-4); background: var(--map-bg); border-radius: var(--radius-card); }
 
 /* Result card */
 .card { border: 1px solid var(--divider); border-radius: var(--radius-card); background: var(--surface); padding: var(--space-4); margin-bottom: var(--space-3); }
@@ -105,8 +120,8 @@ a:hover { text-decoration-thickness: 2px; }
 .pair .t-a { color: var(--person-a-text); }
 .pair .t-b { color: var(--person-b); }
 .tag { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 12px; line-height: 1; }
-.tag-a { background: var(--person-a); color: var(--text); }
-.tag-b { background: var(--person-b); color: #FFFFFF; }
+.tag-a { background: var(--person-a); color: #161A3D; }
+.tag-b { background: var(--person-b); color: var(--on-person-b); }
 .badge { display: inline-flex; align-items: center; gap: var(--space-1); padding: 2px var(--space-2); border-radius: var(--radius-pill); background: var(--success-tint); color: var(--success); font-size: 12px; line-height: 16px; font-weight: 600; }
 
 /* Pre-prompt */
@@ -122,9 +137,9 @@ a:hover { text-decoration-thickness: 2px; }
 <main>
   <p class="muted small">Reference implementation of <code>DESIGN.md</code>. This page renders the tokens for review. It is not a product web client; Halfsies v1 is mobile only.</p>
   <h1>Halfsies style guide</h1>
-  <p class="note small">Items tagged <span class="provisional" style="margin:0">Provisional</span> render a default for a decision marked <strong>TO BE DECIDED</strong> in <code>DESIGN.md</code>. Brand personality, light/dark mode, typography, and the icon set are all still open.</p>
+  <p class="note small">Light and dark tokens follow your system color setting, as the apps do. Switch your OS appearance to review the dark tokens.</p>
 
-  <h2>Logo <span class="provisional">Provisional</span></h2>
+  <h2>Logo</h2>
   <div class="logo-row">
     <div class="logo-clear"><svg class="logo-full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 128" width="400" height="128" role="img" aria-labelledby="halfsies-title halfsies-desc">
   <title id="halfsies-title">Halfsies</title>
@@ -136,19 +151,19 @@ a:hover { text-decoration-thickness: 2px; }
     <circle cx="64" cy="64" r="15" fill="#161A3D" stroke="#FFFFFF" stroke-width="6"/>
   </g>
   <!-- Wordmark: outlined to paths (no font dependency) -->
-  <g id="wordmark" fill="#161A3D" transform="translate(150 91)">
+  <g id="wordmark" style="fill:var(--wordmark)" transform="translate(150 91)">
     <path d="M27.47 0V-50.16H39.53V0ZM2.43 0V-50.16H14.5V0ZM10.87 -20.4V-30.43H33.41V-20.4Z M52.52 1Q49.72 1 47.34 -0.09Q44.95 -1.19 43.48 -3.47Q42 -5.76 42 -9.36Q42 -12.97 43.35 -15.27Q44.71 -17.57 46.93 -19.01Q49.14 -20.44 51.71 -21.23Q54.28 -22.01 56.64 -22.57Q59.77 -23.3 61.37 -23.88Q62.96 -24.46 63.55 -25.23Q64.13 -26.01 64.13 -27.25Q64.13 -29.43 62.91 -30.54Q61.68 -31.65 59.63 -31.65Q58.2 -31.65 56.96 -30.9Q55.71 -30.16 55.01 -28.45Q54.31 -26.74 54.48 -23.82L43.35 -24.76Q43.17 -29.24 44.46 -32.38Q45.76 -35.52 48.13 -37.45Q50.51 -39.37 53.59 -40.25Q56.67 -41.13 60.09 -41.13Q65.45 -41.13 68.98 -39.07Q72.51 -37.01 74.23 -33.01Q75.96 -29 75.96 -23.06V-14.91Q75.96 -12.43 75.96 -9.93Q75.96 -7.43 75.96 -4.96Q75.96 -2.48 75.96 0H65.5Q65.5 -2.68 65.5 -5.38Q65.5 -8.09 65.5 -10.99H64.98Q64.68 -7.48 63.03 -4.77Q61.38 -2.05 58.7 -0.52Q56.02 1 52.52 1ZM57.7 -8.15Q58.78 -8.15 59.9 -8.63Q61.02 -9.1 61.97 -10.12Q62.92 -11.14 63.49 -12.75Q64.07 -14.35 64.07 -16.52V-19.78L65.94 -20.4Q65.33 -19.44 64.18 -18.82Q63.04 -18.19 61.67 -17.79Q60.3 -17.39 58.94 -16.97Q57.58 -16.55 56.46 -15.97Q55.33 -15.38 54.62 -14.45Q53.92 -13.51 53.92 -11.99Q53.92 -9.99 55.05 -9.07Q56.18 -8.15 57.7 -8.15Z M79.11 0V-52.59H91.12V0Z M98.08 0V-24.94H93.14V-33.55L103.92 -32.77V-33.35Q99.62 -33.97 97.4 -35.55Q95.18 -37.13 94.41 -39.14Q93.64 -41.15 93.64 -42.89Q93.64 -46.19 95.37 -48.6Q97.09 -51.01 100.11 -52.3Q103.13 -53.6 106.94 -53.6Q110.06 -53.6 112.66 -52.74Q115.27 -51.89 117.26 -50.33L116.34 -39.14Q114.34 -40.71 112.64 -41.35Q110.94 -42 109.33 -42Q107.29 -42 106.02 -41.09Q104.75 -40.17 104.75 -38.29Q104.75 -36.91 105.56 -35.96Q106.36 -35.02 107.72 -34.59Q109.08 -34.15 110.85 -34.15H117.08V-24.94H110.06V0Z M135.16 1Q130.92 1 127.64 -0.01Q124.36 -1.02 122.21 -2.99Q120.06 -4.97 119.16 -7.88Q118.25 -10.79 118.79 -14.58L129.32 -15.49Q129.32 -13.07 129.94 -11.23Q130.57 -9.38 131.9 -8.38Q133.24 -7.37 135.38 -7.37Q137.22 -7.37 138.48 -8.15Q139.73 -8.94 139.73 -10.75Q139.73 -12.22 138.97 -13.19Q138.21 -14.15 136.58 -14.92Q134.94 -15.69 132.28 -16.54Q129.35 -17.46 126.84 -18.44Q124.33 -19.41 122.48 -20.76Q120.62 -22.12 119.61 -24.07Q118.59 -26.02 118.59 -28.83Q118.59 -32.71 120.56 -35.45Q122.52 -38.2 126.1 -39.66Q129.67 -41.13 134.53 -41.13Q139.02 -41.13 142.7 -39.69Q146.37 -38.24 148.4 -35.02Q150.43 -31.8 149.85 -26.46L139.55 -25.32Q139.78 -27.53 139.15 -29.15Q138.53 -30.76 137.27 -31.64Q136.01 -32.51 134.12 -32.51Q132.12 -32.51 131.04 -31.62Q129.97 -30.73 129.97 -29.38Q129.97 -28.15 130.8 -27.28Q131.63 -26.4 133.26 -25.76Q134.9 -25.11 137.31 -24.37Q139.62 -23.65 142.09 -22.66Q144.55 -21.68 146.65 -20.18Q148.74 -18.68 150.04 -16.45Q151.33 -14.21 151.33 -10.96Q151.33 -7.48 149.53 -4.76Q147.74 -2.04 144.17 -0.52Q140.6 1 135.16 1Z M153.58 0V-40.13H165.65V0ZM159.57 -42.96Q156.17 -42.96 154.32 -44.39Q152.47 -45.83 152.47 -48.55Q152.47 -51.32 154.32 -52.77Q156.17 -54.22 159.57 -54.22Q163.05 -54.22 164.88 -52.74Q166.71 -51.27 166.71 -48.55Q166.71 -45.87 164.88 -44.41Q163.05 -42.96 159.57 -42.96Z M186.37 1Q181.19 1 177.73 -0.55Q174.27 -2.11 172.19 -4.89Q170.11 -7.66 169.22 -11.34Q168.33 -15.02 168.33 -19.23Q168.33 -23.53 169.25 -27.45Q170.17 -31.37 172.2 -34.47Q174.23 -37.56 177.56 -39.35Q180.9 -41.13 185.76 -41.13Q190.48 -41.13 193.78 -39.45Q197.09 -37.77 199.03 -34.7Q200.98 -31.63 201.55 -27.5Q202.12 -23.36 201.34 -18.44L176.04 -17.86V-24.06L191.74 -24.44L190.35 -20.6Q190.78 -24.34 190.41 -26.79Q190.03 -29.24 188.91 -30.47Q187.78 -31.69 185.76 -31.69Q183.62 -31.69 182.37 -30.29Q181.13 -28.9 180.63 -26.33Q180.12 -23.77 180.12 -20.23Q180.12 -13.68 181.66 -10.81Q183.19 -7.93 186.42 -7.93Q187.88 -7.93 188.8 -8.5Q189.73 -9.06 190.26 -10.05Q190.79 -11.05 190.98 -12.4Q191.16 -13.74 191.05 -15.31L202.09 -14.55Q202.44 -11.98 201.9 -9.26Q201.36 -6.54 199.63 -4.21Q197.89 -1.88 194.66 -0.44Q191.43 1 186.37 1Z M220.62 1Q216.38 1 213.1 -0.01Q209.83 -1.02 207.68 -2.99Q205.53 -4.97 204.62 -7.88Q203.72 -10.79 204.25 -14.58L214.78 -15.49Q214.78 -13.07 215.41 -11.23Q216.03 -9.38 217.37 -8.38Q218.7 -7.37 220.85 -7.37Q222.69 -7.37 223.94 -8.15Q225.19 -8.94 225.19 -10.75Q225.19 -12.22 224.43 -13.19Q223.67 -14.15 222.04 -14.92Q220.41 -15.69 217.75 -16.54Q214.81 -17.46 212.31 -18.44Q209.8 -19.41 207.94 -20.76Q206.09 -22.12 205.07 -24.07Q204.05 -26.02 204.05 -28.83Q204.05 -32.71 206.02 -35.45Q207.99 -38.2 211.56 -39.66Q215.13 -41.13 220 -41.13Q224.48 -41.13 228.16 -39.69Q231.84 -38.24 233.87 -35.02Q235.9 -31.8 235.32 -26.46L225.01 -25.32Q225.24 -27.53 224.62 -29.15Q223.99 -30.76 222.73 -31.64Q221.47 -32.51 219.59 -32.51Q217.58 -32.51 216.51 -31.62Q215.44 -30.73 215.44 -29.38Q215.44 -28.15 216.27 -27.28Q217.09 -26.4 218.73 -25.76Q220.36 -25.11 222.78 -24.37Q225.09 -23.65 227.55 -22.66Q230.01 -21.68 232.11 -20.18Q234.21 -18.68 235.5 -16.45Q236.79 -14.21 236.79 -10.96Q236.79 -7.48 235 -4.76Q233.21 -2.04 229.63 -0.52Q226.06 1 220.62 1Z"/>
   </g>
 </svg></div>
     <div>
       <svg width="48" height="48" viewBox="0 0 128 128" role="img" aria-label="Halfsies mark, 48 pixels"><path d="M60 8 A56 56 0 0 0 60 120 Z" fill="#FF7A1A"/><path d="M68 8 A56 56 0 0 1 68 120 Z" fill="#5B4BFF"/><circle cx="64" cy="64" r="15" fill="#161A3D" stroke="#FFFFFF" stroke-width="6"/></svg>
-      <svg width="16" height="16" viewBox="0 0 128 128" role="img" aria-label="Halfsies mark, 16 pixels, minimum size"><path d="M60 8 A56 56 0 0 0 60 120 Z" fill="#FF7A1A"/><path d="M68 8 A56 56 0 0 1 68 120 Z" fill="#5B4BFF"/><circle cx="64" cy="64" r="15" fill="#161A3D" stroke="#FFFFFF" stroke-width="6"/></svg>
+      <svg width="16" height="16" viewBox="0 0 128 128" role="img" aria-label="Halfsies mark, 16 pixels, minimum size"><path d="M60 8 A56 56 0 0 0 60 120 Z" fill="#FF7A1A"/><path d="M68 8 A56 56 0 0 1 68 120 Z" fill="#5B4BFF"/><circle cx="64" cy="64" r="15" fill="#161A3D"/></svg>
       <p class="small muted">Mark alone at 48 and 16 (minimum)</p>
     </div>
   </div>
-  <p class="small muted">The dashed box shows the clear space. Full lockup minimum: 120 wide. Light backgrounds only until DQ-2 is decided.</p>
+  <p class="small muted">The dashed box shows the clear space. Full lockup minimum: 120 wide. On dark backgrounds the wordmark switches to dark <code>text</code>; the mark is unchanged. Below 32, drop the white ring.</p>
 
-  <h2>Color tokens <span class="provisional">Provisional</span></h2>
+  <h2>Color tokens</h2>
   <h3>Core</h3>
   <div class="swatches">
     <div class="swatch"><div class="swatch-chip" style="background:#161A3D"></div><div class="swatch-meta"><strong>primary</strong>#161A3D</div></div>
@@ -165,13 +180,27 @@ a:hover { text-decoration-thickness: 2px; }
     <div class="swatch"><div class="swatch-chip" style="background:#B84A00"></div><div class="swatch-meta"><strong>person-a-text</strong>#B84A00</div></div>
     <div class="swatch"><div class="swatch-chip" style="background:#5B4BFF"></div><div class="swatch-meta"><strong>person-b</strong>#5B4BFF</div></div>
   </div>
+  <h3>Dark mode (system setting)</h3>
+  <div class="swatches">
+    <div class="swatch"><div class="swatch-chip" style="background:#C9CCF2"></div><div class="swatch-meta"><strong>primary</strong>#C9CCF2</div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:#A9AEC4"></div><div class="swatch-meta"><strong>secondary</strong>#A9AEC4</div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:#161A3D"></div><div class="swatch-meta"><strong>background</strong>#161A3D</div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:#20254D"></div><div class="swatch-meta"><strong>surface</strong>#20254D</div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:#F2F3F8"></div><div class="swatch-meta"><strong>text</strong>#F2F3F8</div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:#FF8A80"></div><div class="swatch-meta"><strong>error</strong>#FF8A80</div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:#5FD19A"></div><div class="swatch-meta"><strong>success</strong>#5FD19A</div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:#FF9A4D"></div><div class="swatch-meta"><strong>person-a-text</strong>#FF9A4D</div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:#A69CFF"></div><div class="swatch-meta"><strong>person-b</strong>#A69CFF</div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:#2E3460"></div><div class="swatch-meta"><strong>divider</strong>#2E3460</div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:#173A2E"></div><div class="swatch-meta"><strong>success-tint</strong>#173A2E</div></div>
+  </div>
   <h3>Utility</h3>
   <div class="swatches">
     <div class="swatch"><div class="swatch-chip" style="background:#E4E6EF"></div><div class="swatch-meta"><strong>divider</strong>#E4E6EF · decorative</div></div>
     <div class="swatch"><div class="swatch-chip" style="background:#E3EFE9"></div><div class="swatch-meta"><strong>success-tint</strong>#E3EFE9</div></div>
   </div>
 
-  <h2>Type scale <span class="provisional">Provisional: system font</span></h2>
+  <h2>Type scale</h2>
   <div class="type-row"><code>type-display</code><span style="font-size:34px;line-height:40px;font-weight:700">Meet in the middle</span></div>
   <div class="type-row"><code>type-h1</code><span style="font-size:28px;line-height:34px;font-weight:700">Places in the middle</span></div>
   <div class="type-row"><code>type-h2</code><span style="font-size:22px;line-height:28px;font-weight:700">Lupe's Taqueria</span></div>
@@ -214,10 +243,10 @@ a:hover { text-decoration-thickness: 2px; }
     <div class="field">
       <label for="origin-err">Your starting point</label>
       <input id="origin-err" type="text" value="Main St" aria-invalid="true" aria-describedby="origin-err-msg">
-      <div class="msg msg-error" id="origin-err-msg"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 4v5M8 11v1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg><span>We couldn't find that address. Try adding a city.</span></div>
+      <div class="msg msg-error" id="origin-err-msg"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 4v5M8 11v1" stroke="var(--background)" stroke-width="2" stroke-linecap="round"/></svg><span>We couldn't find that address. Try adding a city.</span></div>
     </div>
     <div class="field">
-      <div class="msg msg-success" role="status"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M4.5 8.2l2.3 2.3 4.7-4.8" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Invite sent</span></div>
+      <div class="msg msg-success" role="status"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M4.5 8.2l2.3 2.3 4.7-4.8" stroke="var(--background)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Invite sent</span></div>
     </div>
   </form>
   <h3>Other person's slot (read-only, FR-ORG-05)</h3>
@@ -239,7 +268,7 @@ a:hover { text-decoration-thickness: 2px; }
   </div>
 
   <h2>Result card and travel pair</h2>
-  <p class="small muted">Mode icons are placeholders until the icon set is chosen (DQ-7).</p>
+  <p class="small muted">Mode icons come from Lucide (ISC). Times are rounded to the nearest minute.</p>
   <div class="card">
     <div class="card-head"><h4>Lupe's Taqueria</h4><span class="small muted">Mexican · $$</span></div>
     <p class="sr-only">18 minutes for you, 19 minutes for them. Even trip.</p>
@@ -264,7 +293,7 @@ a:hover { text-decoration-thickness: 2px; }
   <h3>P-2: Location pre-prompt</h3>
   <div class="sheet" role="group" aria-labelledby="pp-title">
     <p id="pp-title" style="font-size:18px;line-height:24px;font-weight:600">Use your current location?</p>
-    <p class="small">Halfsies uses your location to calculate travel times. The other person sees only your general area, never your exact location.</p>
+    <p class="small">Halfsies uses your location to calculate travel times. They'll see your approximate area and travel times, never your exact starting point.</p>
     <div class="btn-row"><button class="btn btn-secondary" type="button">Not now</button><button class="btn btn-secondary" type="button">Continue</button></div>
   </div>
   <p class="small muted" style="margin-top:var(--space-2)">Decline and accept have equal visual weight.</p>

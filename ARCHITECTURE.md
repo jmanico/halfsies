@@ -138,7 +138,7 @@ flowchart TB
 |---|---|---|
 | Mobile app | UI, OIDC sign-in, secure token storage, DPoP signing, app attestation, deep links, offline read-only cache | React Native, TypeScript, Hermes (section 4) |
 | Edge | TLS termination, HSTS, DDoS protection, coarse per-IP rate limits, static web content (INT-06) | CloudFront, AWS WAF, AWS Shield Standard, S3 |
-| api service | The `/v1` HTTP API. Authentication, authorization, validation, search orchestration, response shaping | Node.js 24 LTS, TypeScript, Fastify (section 5) |
+| api service | The `/v1` HTTP API. Authentication, authorization, validation, search orchestration, response shaping | Node.js 26 LTS, TypeScript, Fastify (section 5) |
 | worker service | Outbox relay, push delivery, retention purges, account deletion completion, session-ending reminders | Same codebase as the API, different entry point (section 6) |
 | Aurora PostgreSQL | System of record | Aurora PostgreSQL 17-compatible, Multi-AZ (section 7) |
 | ElastiCache | Rate-limit counters, DPoP replay cache, token denylist, provider budget counters | ElastiCache, Redis OSS engine, cluster mode, Multi-AZ |
@@ -151,7 +151,7 @@ flowchart TB
 
 ### 4.1 Framework and runtime
 
-- AD-01: The app is **React Native with TypeScript** (strict mode), using the New Architecture and the Hermes engine. This closes OD-01 and satisfies PLAT-03.
+- AD-01: The app is **React Native with TypeScript** (strict mode), using the New Architecture and the Hermes engine, pinned to **React Native 0.87** and the Expo SDK release that supports it. This satisfies PLAT-03.
 - AD-02: The project uses **Expo modules with Continuous Native Generation (`expo prebuild`)**. That is the framework path the React Native documentation recommends. Native projects are generated in CI and built by our own pipeline (SEC-SC-04). Expo Go and hosted Expo build services are not used for release builds.
 - AD-03: **Over-the-air JavaScript updates are disabled** in v1. Every code change ships through a signed store build. This keeps one release path for the supply chain controls (SEC-SC-01 to SEC-SC-04) and for store review.
 
@@ -195,12 +195,12 @@ Every library below still needs its `DEPENDENCIES.md` review before adoption (SE
 | Location | `expo-location` | FR-ORG-03. No background location entitlement or permission is declared |
 | Push tokens | `expo-notifications`, using `getDevicePushTokenAsync` | Raw APNs and FCM tokens. No Expo push relay |
 | Calendar | `expo-calendar` | Only after the `DESIGN.md` P-2 pre-prompt (FR-RES-07) |
-| Crash reporting | Sentry React Native SDK | Scrubbing per SC-MOB-06 (OBS-03). Requires a DPA; status UNKNOWN (SQ-12) |
+| Crash reporting | Sentry React Native SDK | Scrubbing per SC-MOB-06 (OBS-03). Sentry's standard DPA MUST be signed before M5 (release gate). No product analytics SDK in v1 (PRIV-11) |
 | Device keys and attestation | In-house Expo module `halfsies-device-security` | Generates a non-exportable P-256 key in the Secure Enclave or StrongBox (falling back to TEE), signs DPoP proofs, and wraps App Attest and Play Integrity. Roughly 300 lines per platform |
 
 ### 4.4 Deep links and invites
 
-- Invite URL format: `https://<domain>/i#<inviteId>.<secret>`. The token travels in the **URL fragment** (SD-04).
+- Invite URL format: `https://halfsies.app/i#<inviteId>.<secret>`. The token travels in the **URL fragment** (SD-04).
 - iOS Universal Links (`apple-app-site-association`) and Android verified App Links (`assetlinks.json`) claim the `/i` path (SEC-INV-03).
 - The deep link handler validates the link (SEC-MOB-06) and shows a "Join session?" confirmation (RN-LNK-03). On confirmation it calls `POST /v1/invites/redeem` with the token in the request body, then replaces the navigation state (SEC-INV-06).
 
@@ -236,7 +236,7 @@ Cold start is measured in release builds in CI on a device farm (AWS Device Farm
 
 | Concern | Choice | Rationale |
 |---|---|---|
-| Runtime | Node.js 24 LTS, TypeScript strict | Fixed constraint. LTS support runs through April 2028 |
+| Runtime | Node.js 26 LTS (pinned), TypeScript strict | Fixed constraint. Enters LTS October 2026, before M1 |
 | HTTP framework | Fastify | Mature and fast. It validates requests with JSON Schema through Ajv, and it serializes responses from JSON Schema, so undeclared properties are dropped (API-SHP-02, API-SHP-03) |
 | Contract | `packages/api-contract/openapi.yaml` (OpenAPI 3.1) is the single source (API-01). Request and response schemas and TypeScript types are generated from it at build time. CI fails on drift |
 | Validation | Ajv with `additionalProperties: false`, `removeAdditional: false`, and coercion off (SEC-VAL-01 to SEC-VAL-04) |
@@ -290,7 +290,8 @@ The code is a modular monolith: one deployable unit with internal module boundar
 | `sessions` | Session lifecycle, participants, ETag computation | `/v1/sessions`, `/v1/sessions/{id}`, leave |
 | `invites` | Invite creation, rotation, revocation, redemption | `/v1/sessions/{id}/invites*`, `/v1/invites/redeem` |
 | `origins` | Origin set and replace, encryption, snapping, area labels | `/v1/sessions/{id}/participants/me/origin` |
-| `places` | Autocomplete proxy | `/v1/places/autocomplete` |
+| `places` | Autocomplete proxy (`POST`) | `/v1/places/autocomplete` |
+| `safety` | Blocks and abuse reports (FR-SAFE-01, FR-SAFE-02) | `/v1/blocks*`, `/v1/sessions/{id}/reports` |
 | `search` | Candidate generation, matrix, ranking, result storage | `/v1/sessions/{id}/searches*` |
 | `proposals` | Proposals and Plans | `/v1/sessions/{id}/proposals*` |
 | `notifications` | Writing domain events to the outbox; formatting push payloads | none (internal) |
@@ -379,6 +380,8 @@ erDiagram
     participants ||--o{ devices : "owns (guest)"
     users ||--o{ refresh_tokens : "holds"
     guests ||--o{ refresh_tokens : "holds"
+    users ||--o{ blocks : "blocks"
+    sessions ||--o{ abuse_reports : "has"
 ```
 
 | Table | Key columns | Constraints and indexes |
@@ -396,6 +399,9 @@ erDiagram
 | `refresh_tokens` | `id`, `family_id`, `subject_type`, `subject_id`, `token_hash bytea`, `dpop_jkt?`, `expires_at`, `family_expires_at`, `used_at?`, `revoked_at?` | unique (`token_hash`); index (`family_id`); index (`subject_id`) |
 | `idempotency_keys` | `subject_id`, `key`, `request_hash`, `status_code`, `response_body jsonb`, `created_at` | PK (`subject_id`, `key`) |
 | `outbox` | `id`, `event_type`, `payload jsonb`, `created_at`, `sent_at?` | partial index on unsent rows |
+| `blocks` | `blocker_user_id`, `blocked_user_id`, `created_at` | PK (`blocker_user_id`, `blocked_user_id`). Checked on session creation and invite redemption in both directions (FR-SAFE-01) |
+| `abuse_reports` | `id`, `session_id?`, `reporter_subject_type`, `reporter_subject_id`, `reported_subject_type`, `reported_subject_id`, `reason`, `details? (<= 500 chars)`, `status`, `created_at` | No location columns. Insert writes an outbox event that notifies abuse@halfsies.app (FR-SAFE-02) |
+| `token_denylist` | `subject_id`, `expires_at` | Durable copy of `deny:sub:*` (section 7.3); rows purged after `expires_at` |
 | `audit_events` | Not in PostgreSQL. Security events go to a dedicated CloudWatch Logs group (SEC-LOG-01) | |
 
 Rules enforced in SQL rather than only in code:
@@ -406,7 +412,7 @@ Rules enforced in SQL rather than only in code:
 
 ### 7.3 Redis usage
 
-Redis holds only disposable state. Losing it loses no user data. Security keys are not evictable, and the denylist and replay checks fail closed on sensitive routes (SC-AUTH-12). Behavior on other routes is open (SQ-23).
+Redis holds only disposable state. Losing it loses no user data. Security keys are not evictable, and the denylist and replay checks fail closed on sensitive routes (SC-AUTH-12). Denylist entries are also written to Aurora (`token_denylist`). If Redis is lost, denylist checks fall back to Aurora; DPoP replay checks fail closed on sensitive routes, and read-only routes accept with the Aurora denylist check and degraded replay protection.
 
 | Key pattern | Purpose | TTL |
 |---|---|---|
@@ -433,7 +439,7 @@ Responses that carry secrets are never stored (SC-VAL-07). Keys expire per API-0
 ```mermaid
 flowchart LR
     in["PUT origin<br/>lat, lng or suggestionId"] --> resolve["Resolve suggestion<br/>via GeocodingProvider"]
-    resolve --> snap["Snap: geohash-6 cell center"]
+    resolve --> snap["Snap: geohash-6 cell center,<br/>geohash-5 if low density"]
     snap --> label["Area label: reverse geocode<br/>the cell center, locality or neighborhood"]
     resolve --> enc["Encrypt precise coordinate<br/>AWS Encryption SDK, KMS key origin-cmk"]
     enc --> db[("participants.origin_ciphertext")]
@@ -443,6 +449,7 @@ flowchart LR
 
 - The precise coordinate is encrypted with the **AWS Encryption SDK for JavaScript**, using a KMS keyring on the dedicated key `origin-cmk` (SC-CRYPTO-01, SC-CRYPTO-02). A local data key cache (5 minutes maximum, bounded message count) keeps KMS call volume manageable at scale.
 - The api service decrypts in exactly two places: running a search, and returning the caller's **own** origin in `GET /v1/sessions/{id}`. The worker never decrypts origins; it purges them by setting the columns to `NULL`.
+- Low-density snapping: where the geohash-6 cell has fewer than 500 residents, the origin snaps to the geohash-5 cell center instead. Density comes from the WorldPop 100 m population grid (CC BY 4.0), precomputed into a server-side geohash-6 lookup table shipped with the api service.
 - The other participant is serialized through a dedicated allowlist serializer (API-SHP-01).
 
 ---
@@ -477,7 +484,7 @@ sequenceDiagram
     API-->>App: new access token and refresh token
 ```
 
-The API redeems the authorization code **itself**, acting as a confidential client of each IdP (SD-05). On iOS, Sign in with Apple uses `AuthenticationServices` natively and sends the returned authorization code through the same endpoint. On Android, Sign in with Apple uses Apple's web flow through Custom Tabs, with an `https` App Link redirect and no name or email scopes, so that `response_mode=query` works. Whether that flow meets SEC-AUTH-01 is open (SQ-05). The app supplies the `nonce`, so the API binds it per SC-AUTH-09 until SQ-19 is resolved.
+The API redeems the authorization code **itself**, acting as a confidential client of each IdP (SD-05). On iOS, Sign in with Apple uses `AuthenticationServices` natively and sends the returned authorization code through the same endpoint. On Android, Sign in with Apple uses Apple's web flow through Custom Tabs, with an `https` App Link redirect and no name or email scopes, so that `response_mode=query` works. It uses PKCE if Apple's authorize endpoint supports it; otherwise the documented exception is code redemption as a confidential client (SD-05) plus the DPoP-bound nonce. The app supplies the `nonce`, which embeds a hash of the DPoP JWK thumbprint (SC-AUTH-09).
 
 ### 8.2 Create session, invite, and redeem
 
@@ -589,7 +596,7 @@ Inputs: origins `A` and `B`, modes `mA` and `mB`, meeting time `T`, filters, and
 6. **Final matrix.** Make two parallel 1×N calls, A and B to the candidates, each with its own mode and `T` (FR-SRCH-05).
 7. **Rank.** Exclude candidates over `Tmax` (FR-SRCH-08). Compute `even` (FR-SRCH-06), then score and order (FR-SRCH-07). Return at most the FR-SRCH-09 limit.
 
-`FAIRNESS_RATIO`, `FAIRNESS_FLOOR_SECONDS`, `W`, `MAX_CANDIDATES`, the probe layout, and the radius bounds are read from SSM Parameter Store, so they can be tuned without a deploy (OD-05).
+`FAIRNESS_RATIO`, `FAIRNESS_FLOOR_SECONDS`, `W`, `MAX_CANDIDATES`, the probe layout, and the radius bounds are read from SSM Parameter Store, so they can be tuned without a deploy. v1 values: FR-SRCH-06, FR-SRCH-07; retuned after beta through config only.
 
 ### 9.3 Latency and cost budget
 
@@ -630,9 +637,9 @@ interface GeocodingProvider {
 
 Adapters validate every provider response before use (SEC-SEC-03). Unit tests use recorded fixtures behind these interfaces (QA-03).
 
-### 10.2 Provider selection (proposed resolution of OD-02 and OD-03)
+### 10.2 Provider selection
 
-AD-10: Use **Google Maps Platform**: the Routes API (Compute Route Matrix), Places API (New) nearby search and autocomplete, and the Geocoding API. Of the alternatives in section 15, it is the only one that covers drive, **transit**, walk, and bike matrices with departure time, **and** place categories with opening hours and price level, from a single managed vendor. Self-hosting Valhalla or OSRM plus OpenTripPlanner would mean running GTFS ingestion for every metro area, which the "nothing exotic" constraint argues against. Transit ships in v1, subject to Product confirming the cost from the budget model (OD-02).
+AD-10: Use **Google Maps Platform**: the Routes API (Compute Route Matrix), Places API (New) nearby search and autocomplete, and the Geocoding API. Of the alternatives in section 15, it is the only one that covers drive, **transit**, walk, and bike matrices with departure time, **and** place categories with opening hours and price level, from a single managed vendor. Self-hosting Valhalla or OSRM plus OpenTripPlanner would mean running GTFS ingestion for every metro area, which the "nothing exotic" constraint argues against. Transit ships in v1.
 
 Consequences:
 
@@ -641,7 +648,7 @@ Consequences:
 
 ### 10.3 Provider data retention (NFR-COST-03)
 
-**Status: UNCONFIRMED. Legal must review before M4 (OD-03).** The values below reflect Engineering's reading of the Google Maps Platform terms and are the most conservative design that still works.
+The values below reflect Engineering's reading of the Google Maps Platform terms and are the most conservative design that still works. Legal review of the terms is a release checklist item.
 
 | Data | Where held | Retention in this design |
 |---|---|---|
@@ -732,7 +739,9 @@ flowchart LR
 
 ### 12.1 Accounts and environments
 
-AWS Organizations with separate accounts: `security` (log archive, GuardDuty and Security Hub delegated admin), `shared` (ECR, CI roles), `dev`, `staging`, and `prod`. Service control policies deny disabling CloudTrail, deny leaving the organization, and deny regions outside the approved list. Staging mirrors production at a smaller size and is where DAST runs (QA-06).
+AWS Organizations with separate accounts: `security` (GuardDuty and Security Hub delegated admin; IAM Access Analyzer enabled at org level), `log-archive` (CloudTrail and security logs in S3 with Object Lock, compliance mode, 1 year), `shared` (ECR, CI roles), `dev`, `staging`, and `prod`. Service control policies deny disabling CloudTrail, deny leaving the organization, and deny regions outside the approved list. Staging mirrors production at a smaller size and is where DAST runs (QA-06).
+
+Human access uses IAM Identity Center with phishing-resistant MFA (passkeys or security keys); there are no IAM users. Production write access is just-in-time, approved by a second person, for at most 1 hour. Root credentials are break-glass only, on hardware keys, and every use alerts.
 
 ### 12.2 Deployment view (production)
 
@@ -778,11 +787,12 @@ flowchart TB
 
 - **Compute.** ECS on Fargate, ARM64 (Graviton). No servers or cluster nodes to patch. Container hardening: NODE-OPS-01.
 - **Scaling.** The api service uses target tracking on ALB requests per target and on CPU, spread across 3 AZs. The worker scales on SQS queue depth. Aurora readers use Aurora auto scaling. ElastiCache runs in cluster mode and can add shards.
+- **ALB to targets.** HTTP/1.1. Node keep-alive timeout 65 s exceeds the ALB idle timeout of 60 s.
 - **Egress.** All outbound internet traffic goes through NAT gateways with fixed Elastic IPs (SEC-SEC-02 restricts server keys to them).
 
 AD-08: ECS Fargate was chosen over EKS. The system is two services with no need for Kubernetes features. Fargate removes node management, and ECS integrates directly with ALB, IAM task roles, and Secrets Manager.
 
-AD-09: CloudFront sits in front of the API even though the API responses are not cached. It gives edge TLS termination close to users, WAF and Shield at the edge, one distribution for both `api.<domain>` and the static `<domain>` content, and a stable place to apply logging controls.
+AD-09: CloudFront sits in front of the API even though the API responses are not cached. It gives edge TLS termination close to users, WAF and Shield at the edge, one distribution for both `api.halfsies.app` and the static `halfsies.app` content, and a stable place to apply logging controls.
 
 ### 12.3 Infrastructure as code
 
@@ -795,10 +805,10 @@ AD-11: **Terraform**, with one root module per environment and shared modules fo
 | AZ failure | Every tier runs in 3 AZs. Aurora fails over automatically. The ALB and ECS rebalance |
 | SLO | NFR-AV-01 allows about 3.6 hours of downtime a month. Single-region Multi-AZ meets this |
 | RPO and RTO for a regional outage | RPO 1 hour, RTO 8 hours. Aurora snapshots are copied hourly to `us-east-2`. The Terraform can build the stack there. The DNS failover is a runbook step, not automatic |
-| Backups | Automated backups with point-in-time recovery, retention per section 6.3 of `REQUIREMENTS.md`, encrypted, restores tested quarterly |
+| Backups | Automated backups with point-in-time recovery, 29-day retention (section 6.3 of `REQUIREMENTS.md`), encrypted, restores tested quarterly |
 | Deploys | ECS rolling deployment with the deployment circuit breaker and automatic rollback. Migrations must stay backward compatible with the previous release (expand, then contract) |
 
-AD-20 (proposed resolution of OD-07): the primary region is **`us-west-2`**, with `us-east-2` for DR copies. v1 is US-only (NFR-L10N-01, PRIV-10). Both regions offer every service used here. An EU launch needs an EU region deployment for GDPR data residency, which is out of scope for v1.
+AD-20: the primary region is **`us-west-2`**, with `us-east-2` for DR copies. v1 is US-only (NFR-L10N-01, PRIV-10). Both regions offer every service used here. An EU launch needs an EU region deployment for GDPR data residency, which is out of scope for v1.
 
 ---
 
@@ -809,9 +819,9 @@ AD-20 (proposed resolution of OD-07): the primary region is **`us-west-2`**, wit
 | Traces | OpenTelemetry, ADOT collector, X-Ray | A span per request, per provider call, and per database transaction. The correlation ID is returned in `X-Correlation-Id` |
 | Metrics | CloudWatch (embedded metric format from the app) | OBS-02 metrics, broken down per provider and operation where relevant, plus rate-limit triggers and queue depth |
 | Logs | CloudWatch Logs | Application logs (30 days) and the security log group (SEC-LOG-01) |
-| Crashes | Sentry | Mobile crashes and JS errors, scrubbed (OBS-03) |
+| Crashes | Sentry | Mobile crashes and JS errors, scrubbed (OBS-03). No product analytics in v1 (PRIV-11) |
 | Dashboards and SLOs | CloudWatch dashboards; CloudWatch Application Signals SLOs | Availability SLO, latency SLOs from NFR-PERF |
-| Alerts | CloudWatch alarms to SNS to the on-call tool | SLO burn rate, provider error spikes, budget at 80% (NFR-COST-02), security alarms (SEC-LOG-03), dead-letter queue depth |
+| Alerts | CloudWatch alarms to SNS to PagerDuty | SLO burn rate, provider error spikes, budget at 80% (NFR-COST-02), security alarms (SEC-LOG-03), refresh from a new ASN for a token family, dead-letter queue depth |
 
 Metric dimensions are limited to route template, provider, operation, mode, and outcome. There are no user, session, or location dimensions.
 
@@ -860,8 +870,8 @@ npm workspaces, with one lockfile at the root (SEC-SC-02).
 
 | Area | Choice | Main alternatives considered | Why |
 |---|---|---|---|
-| Mobile framework | React Native + TypeScript, Expo modules with prebuild | Native Swift and Kotlin; Flutter | Fixed constraint. One codebase, native views, a large ecosystem |
-| API runtime | Node.js 24 LTS | none | Fixed constraint |
+| Mobile framework | React Native 0.87 + TypeScript, Expo modules with prebuild | Native Swift and Kotlin; Flutter | Fixed constraint. One codebase, native views, a large ecosystem |
+| API runtime | Node.js 26 LTS | none | Fixed constraint |
 | HTTP framework | Fastify | Express, NestJS | Schema-driven validation and serialization map directly onto the OpenAPI-first contract. Faster than Express. Less framework weight than NestJS |
 | Database | Aurora PostgreSQL + RDS Proxy | RDS for PostgreSQL | Fixed engine. Aurora has faster failover and easier read scaling at this size |
 | Query layer | Kysely on `pg` | Prisma, TypeORM | Type-safe SQL that is always parameterized, with full control over locking and conditional updates |
@@ -908,7 +918,4 @@ npm workspaces, with one lockfile at the root (SEC-SC-02).
 
 ## 17. Open architecture questions
 
-| ID | Question | Owner | Needed by |
-|---|---|---|---|
-| AQ-03 | PRIV-11 allows first-party product analytics, but section 4.2 of `REQUIREMENTS.md` has no events endpoint. Either add `POST /v1/events` (writing to Amazon Data Firehose and S3) or defer analytics past v1 | Product | M5 |
-| AQ-05 | Final domain names for `<domain>` and `api.<domain>` (these affect the AASA file, `assetlinks.json`, and IdP redirect URIs) | Product | M1 |
+None open.

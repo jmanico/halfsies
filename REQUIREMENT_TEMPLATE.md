@@ -8,7 +8,7 @@ Uppercase normative terms use BCP 14 semantics as defined by RFC 2119 and RFC 81
 
 ## Metadata
 
-- **ID**: [REQ-MODULE-###, e.g., REQ-AUTH-001]
+- **ID**: [The owning spec's existing ID prefix and next number, e.g., FR-SRCH-12, NFR-PERF-06, SEC-AUTH-15]
 - **Title**: [Concise requirement name]
 - **Version**: [Semantic version, e.g., 1.0.0]
 - **Status**: [Draft | In Review | Approved | Implemented | Verified | Deprecated]

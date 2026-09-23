@@ -31,13 +31,13 @@ Companion docs: `REQUIREMENTS.md` (product behavior, API contract, privacy requi
 
 | Item | Value |
 |---|---|
-| Security contact | TO BE DECIDED (SQ-01) |
-| Private reporting channel | TO BE DECIDED. GitHub private vulnerability reporting is one option; it is not enabled today (UNKNOWN) |
-| Response targets (acknowledge, triage, fix) | TO BE DECIDED |
-| Safe harbor and disclosure policy | TO BE DECIDED |
+| Security contact | security@halfsies.app |
+| Private reporting channel | security@halfsies.app, and GitHub private vulnerability reporting (enabled before public release) |
+| Response targets (acknowledge, triage, fix) | Acknowledge within 3 business days, triage within 7 days, fix critical within 30 days and high within 90 days |
+| Safe harbor and disclosure policy | Safe harbor for good-faith research. Coordinated disclosure after 90 days |
 | Supported versions | The app versions API-02 supports, and the current API. Nothing has been released yet |
 
-Until a channel exists, do not file security issues in the public issue tracker.
+Do not file security issues in the public issue tracker.
 
 ---
 
@@ -118,7 +118,7 @@ Locations below name components defined in `ARCHITECTURE.md`.
 | AC-07 | Person with physical access to an unlocked or stolen device | Untrusted |
 | AC-08 | Compromised or malfunctioning third-party provider (Google Maps Platform, IdP, APNs, FCM) | Untrusted responses |
 | AC-09 | Compromised dependency or CI component | Untrusted |
-| AC-10 | Insider with cloud or repository access | Partially trusted; least privilege applies. The access model is UNKNOWN (SQ-03) |
+| AC-10 | Insider with cloud or repository access | Partially trusted; least privilege applies. Human access per section 10; audit logs per SC-LOG-04 |
 
 ### 3.4 Entry points
 
@@ -146,7 +146,7 @@ Method: STRIDE per trust boundary and asset, LINDDUN for personal-data flows (4.
 
 Evidence: `REQUIREMENTS.md`, `ARCHITECTURE.md`, `SECURITY.md`, and `DESIGN.md` at commit `6559707` (review of 2026-09-23). No code, configuration, or infrastructure exists, so every control named below is a design obligation. None is implemented or verified. Threats T-46 onward came from that review. When a threat depends on an unresolved decision, the threat names the decision and the control is written conditionally. Coverage and evidence limits are in 4.11.
 
-Likelihood (L) and impact (I) use High, Medium, and Low. They are design-time estimates (ASSUMPTION), to be recalibrated after the first penetration test (QA-07).
+Likelihood (L) and impact (I) use High, Medium, and Low. They are design-time estimates, to be recalibrated after the first penetration test (QA-07).
 
 ### 4.1 Spoofing
 
@@ -156,12 +156,12 @@ Likelihood (L) and impact (I) use High, Medium, and Low. They are design-time es
 | T-02 | Account takeover through IdP account linking by email (a different IdP account with the same or a reused email) | M | H | SC-AUTH-07 | Low |
 | T-03 | A forged or misissued IdP ID token (algorithm confusion, wrong audience, replayed nonce) | L | H | SEC-AUTH-03 | Low |
 | T-04 | A forged Halfsies access token (`alg: none`, HS/ES confusion, unknown `kid`) | L | H | SEC-AUTH-04 | Low |
-| T-05 | A malicious app on the device intercepts the invite link or the OIDC redirect | M | H | SEC-INV-03, SD-04, SEC-AUTH-01, RN-LNK-01 | Low. See SQ-05 for Apple sign-in on Android |
+| T-05 | A malicious app on the device intercepts the invite link or the OIDC redirect | M | H | SEC-INV-03, SD-04, SEC-AUTH-01, RN-LNK-01 | Low. Apple sign-in on Android per SEC-AUTH-01 |
 | T-06 | Invite secrets are brute-forced online | L | H | SEC-INV-01, SEC-INV-02, SEC-RL-02 | Negligible (256-bit secret) |
 | T-07 | A forwarded invite link is redeemed by someone the Initiator did not intend | M | M | SEC-INV-04, FR-SES-04, FR-SES-07 | Accepted. The link is a bearer credential by design. The Initiator sees who joined and can end the session |
 | T-08 | A scripted client impersonates the app to farm provider calls | H | M | SEC-RL-01, SEC-RL-05, SC-COST-01 | Medium. Attestation is not the sole control (SEC-RL-05) |
-| T-46 | OIDC authorization code injection. The app sends both the code and the `nonce` to `POST /v1/auth/token` (`ARCHITECTURE.md` 8.1), so the SEC-AUTH-03 nonce check compares against a value the client chose. A stolen code and its nonce can then be redeemed from another client. PKCE blocks this on flows that use it, but native Sign in with Apple on iOS does not use PKCE | L | H | SEC-AUTH-01, SEC-AUTH-06, SC-AUTH-09 | TO BE DECIDED (SQ-19) |
-| T-47 | Attestation replay. SEC-RL-05 verifies App Attest and Play Integrity, but section 4.2 of `REQUIREMENTS.md` has no endpoint that issues a server challenge. Without a fresh challenge or a request hash bound to it, a scripted client can replay one captured attestation | M | M | SEC-RL-05, SC-RL-06 | Medium until SQ-20 is resolved. Attestation is never the sole control |
+| T-46 | OIDC authorization code injection. The app sends both the code and the `nonce` to `POST /v1/auth/token` (`ARCHITECTURE.md` 8.1), so the SEC-AUTH-03 nonce check compares against a value the client chose. A stolen code and its nonce can then be redeemed from another client. PKCE blocks this on flows that use it, but native Sign in with Apple on iOS does not use PKCE | L | H | SEC-AUTH-01, SEC-AUTH-06, SC-AUTH-09 | Low. Nonce bound to the DPoP key (SC-AUTH-09) |
+| T-47 | Attestation replay. SEC-RL-05 verifies App Attest and Play Integrity, but section 4.2 of `REQUIREMENTS.md` has no endpoint that issues a server challenge. Without a fresh challenge or a request hash bound to it, a scripted client can replay one captured attestation | M | M | SEC-RL-05, SC-RL-06 | Low. Attestation is bound to a request hash (SC-RL-06) and is never the sole control |
 
 ### 4.2 Tampering
 
@@ -186,7 +186,7 @@ Likelihood (L) and impact (I) use High, Medium, and Low. They are design-time es
 | ID | Threat | L | I | Controls | Residual |
 |---|---|---|---|---|---|
 | T-19 | A security-relevant action (token reuse, invite brute force, deletion) cannot be reconstructed | M | M | SEC-LOG-01, SEC-LOG-03 | Low |
-| T-20 | Audit logs are tampered with or deleted by an insider | L | M | SC-LOG-04 | Medium. Log immutability is TO BE DECIDED (SQ-03) |
+| T-20 | Audit logs are tampered with or deleted by an insider | L | M | SC-LOG-04 | Low. Logs are exported to an Object Lock archive (SC-LOG-04) |
 
 ### 4.4 Information disclosure
 
@@ -195,7 +195,7 @@ Likelihood (L) and impact (I) use High, Medium, and Low. They are design-time es
 | T-21 | **The other participant gets the precise origin** from API responses (AC-03) | H | H | PRIV-03, API-SHP-01, API-SHP-02, SC-PRIV-01 | Low |
 | T-22 | **The other participant trilaterates the origin from travel times** (PRIV-06). One search returns up to 25 results (FR-SRCH-09). Each gives a place coordinate and the counterpart's travel time in a known mode, so a single search yields up to 25 isochrone constraints. Repeated searches add more, because the attacker can move their own origin or change filters between them | H | H | SC-PRIV-03, SC-PRIV-07, SC-PRIV-08, SEC-RL-03 | **Accepted residual risk for v1 (SD-03), not yet quantified.** With 25 points per search, rounding to 60 s (OD-06) removes little precision. Walk and bike modes leak the most. The SD-03 quantitative test decides whether coarser handling is required |
 | T-23 | The other participant infers the counterpart's region from the geometry of the result set | M | M | API-SHP-02, API-SHP-03 | Accepted. This is inherent to the product. It is bounded by the snapped area already disclosed |
-| T-24 | Coordinates or addresses leak into logs, traces, metrics, crash reports, WAF, CloudFront, or ALB logs (PRIV-05) | H | H | SEC-LOG-02, SC-LOG-05, SC-MOB-06 | Medium until SQ-07 is resolved (autocomplete query string) |
+| T-24 | Coordinates or addresses leak into logs, traces, metrics, crash reports, WAF, CloudFront, or ALB logs (PRIV-05) | H | H | SEC-LOG-02, SC-LOG-05, SC-MOB-06 | Medium. Autocomplete moves to `POST` with a JSON body before M3, which removes address text from query strings |
 | T-25 | Location or address in push payloads or on the lock screen | M | H | FR-NOT-02, SC-NOT-01 | Low |
 | T-26 | Location in invite share text or directions deep links | M | H | SC-INV-05, FR-RES-06, SC-MOB-08 | Low |
 | T-27 | Session existence probing or ID enumeration | M | L | SEC-AZ-01 (404), API-06 | Low |
@@ -205,8 +205,8 @@ Likelihood (L) and impact (I) use High, Medium, and Low. They are design-time es
 | T-31 | Provider API keys leak from the app bundle or the repository | M | H | SEC-SEC-01, SEC-SEC-02, SEC-SEC-04 | Low |
 | T-32 | Data export (`GET /v1/me/export`) is abused with a stolen token | L | M | T-01 controls, SEC-RL-01 | Low |
 | T-33 | Precise origins are retained past the purge obligations in section 6.3 of `REQUIREMENTS.md` | M | H | SC-DATA-04, SC-DATA-05 | Low |
-| T-51 | **The idempotency store keeps secrets.** API-05 stores the response of every creating `POST` for 24 hours (`ARCHITECTURE.md` 7.4). The invite response carries the invite secret, and the redemption and token responses carry access and refresh tokens. Storing them in `idempotency_keys.response_body` contradicts SEC-INV-02 and SEC-AUTH-05, which allow hashes only. Redemption is also unauthenticated, so SC-VAL-06's "keyed per subject" has no subject to key on | M | H | SC-VAL-07 | Low once SQ-22 is resolved. Until then, SC-VAL-07 applies as the more secure reading |
-| T-52 | **Search filters act as a location oracle.** The maximum travel time (FR-SRCH-02, 10 to 120 minutes) is set by whoever runs the search, and it applies to both people. By setting it low and watching which places are excluded (FR-SRCH-08), or whether the reason is `no_overlap` (FR-SRCH-10), the searcher can test whether the counterpart's origin lies inside an isochrone. Rounding the displayed times does not stop this | M | H | SEC-RL-03, SC-PRIV-08 | TO BE DECIDED (OD-10) |
+| T-51 | **The idempotency store keeps secrets.** API-05 stores the response of every creating `POST` for 24 hours (`ARCHITECTURE.md` 7.4). The invite response carries the invite secret, and the redemption and token responses carry access and refresh tokens. Storing them in `idempotency_keys.response_body` contradicts SEC-INV-02 and SEC-AUTH-05, which allow hashes only. Redemption is also unauthenticated, so SC-VAL-06's "keyed per subject" has no subject to key on | M | H | SC-VAL-07 | Low. API-05 excludes responses that carry secrets or tokens (SC-VAL-07) |
+| T-52 | **Search filters act as a location oracle.** The maximum travel time (FR-SRCH-02, 10 to 120 minutes) is set by whoever runs the search, and it applies to both people. By setting it low and watching which places are excluded (FR-SRCH-08), or whether the reason is `no_overlap` (FR-SRCH-10), the searcher can test whether the counterpart's origin lies inside an isochrone. Rounding the displayed times does not stop this | M | H | SEC-RL-03, SC-PRIV-08 | Accepted residual risk (RR-01). OD-10 adopted: each person's maximum applies only to their own time (SC-PRIV-08) |
 | T-53 | Unrounded values leak through other fields. `score` (FR-SRCH-07) combined with the caller's own `tA` gives the counterpart's exact `tB`. Rank order and the `even` flag are computed on unrounded values, so they also carry sub-minute information | M | M | SC-PRIV-07 | Low for `score`, which is not serialized. Leakage through rank and `even` is part of RR-01 |
 | T-54 | Travel times derived from an origin outlive it. Leaving removes the origin (FR-SES-05), and an origin change only marks searches stale (`ARCHITECTURE.md` 8.3). `results.t_a` and `t_b` stay readable through `GET .../searches/{searchId}` until the session expires | M | M | SC-PRIV-06 | Low |
 | T-55 | Pushes keep reaching a device after sign-out, account deletion, or leaving. SC-MOB-04 clears local state, but no control deletes the server-side `devices` row. Event types and place names then reach whoever holds the device next (AB-03) | M | M | SC-NOT-03 | Low |
@@ -216,13 +216,13 @@ Likelihood (L) and impact (I) use High, Medium, and Low. They are design-time es
 
 | ID | Threat | L | I | Controls | Residual |
 |---|---|---|---|---|---|
-| T-34 | **Denial of wallet**: automated searches or autocomplete calls drain the provider budget (API6:2023) | H | H | SC-COST-01, NFR-COST-01, FR-SRCH-11, SEC-RL-03, SEC-RL-05 | Medium. Budgets are TO BE DECIDED (OD-08) |
+| T-34 | **Denial of wallet**: automated searches or autocomplete calls drain the provider budget (API6:2023) | H | H | SC-COST-01, NFR-COST-01, FR-SRCH-11, SEC-RL-03, SEC-RL-05 | Medium. OD-08 budgets apply: 20 searches and 200 autocomplete calls per user per day, $50 per day global provider spend, alert at 80% |
 | T-35 | Request floods, slow clients, oversized bodies (API4:2023) | H | M | SEC-RL-01, NODE-HTTP-01 to NODE-HTTP-04, SC-HTTP-02 | Low |
 | T-36 | ReDoS, or deep or huge JSON exhausting CPU or memory | M | M | JS-JSON-01, JS-RGX-01 | Low |
 | T-37 | A provider outage stalls request handlers | M | M | SC-PROV-03 | Low |
 | T-38 | Invite DoS: an attacker who knows an invite ID burns its 5 failed attempts | L | L | SEC-RL-02 | Accepted. Only link holders know the invite ID, and the Initiator can rotate (FR-SES-04) |
-| T-57 | **Denial of wallet through self-invites.** An account holder creates sessions and redeems their own invites as guests. Each guest is a new subject with its own per-user budget (NFR-COST-02) and its own rate limits, so provider spend grows with the number of sessions. SEC-RL-04 does not yet bound that number | H | H | SC-COST-02, SEC-RL-04, SEC-RL-05 | Medium until the SEC-RL-04 and OD-08 values are set |
-| T-58 | Redis loss or eviction turns off security checks. `ARCHITECTURE.md` 7.3 accepts degraded replay protection when Redis is lost. If an outage, failover, or memory eviction drops `deny:sub:*` or `dpop:jti:*` keys, then for up to 15 minutes a deleted account's access token or a replayed DPoP proof is accepted | L | H | SC-AUTH-12 | TO BE DECIDED (SQ-23) |
+| T-57 | **Denial of wallet through self-invites.** An account holder creates sessions and redeems their own invites as guests. Each guest is a new subject with its own per-user budget (NFR-COST-02) and its own rate limits, so provider spend grows with the number of sessions. SEC-RL-04 does not yet bound that number | H | H | SC-COST-02, SEC-RL-04, SEC-RL-05 | Low. SEC-RL-04 and OD-08 values are set |
+| T-58 | Redis loss or eviction turns off security checks. `ARCHITECTURE.md` 7.3 accepts degraded replay protection when Redis is lost. If an outage, failover, or memory eviction drops `deny:sub:*` or `dpop:jti:*` keys, then for up to 15 minutes a deleted account's access token or a replayed DPoP proof is accepted | L | H | SC-AUTH-12 | Low. Denylist entries are durable in Aurora (SC-AUTH-12) |
 
 ### 4.6 Elevation of privilege
 
@@ -235,27 +235,27 @@ Likelihood (L) and impact (I) use High, Medium, and Low. They are design-time es
 | T-43 | A tampered release or over-the-air update ships to users | L | H | SEC-SC-03, SEC-SC-04, AD-03 | Low |
 | T-44 | SSRF: the server fetches a URL chosen by a client or a provider | L | H | SEC-SEC-03, NODE-NET-01 | Low. By design, no server code fetches a caller-supplied URL |
 | T-45 | Script injection on static web pages steals invite fragments or hijacks the fallback page | L | M | SC-WEB-01, SC-WEB-02 | Low |
-| T-59 | Invite redemption mints account credentials. Anyone holding an invite token can call `POST /v1/invites/redeem`, and it "returns guest or account-bound credentials" (section 4.2 of `REQUIREMENTS.md`). If it issued account-bound credentials without the caller proving control of that account, an invite holder could get tokens for someone else's account | L | H | SC-AUTH-11 | Low once SQ-21 is resolved |
+| T-59 | Invite redemption mints account credentials. Anyone holding an invite token can call `POST /v1/invites/redeem`, and it "returns guest or account-bound credentials" (section 4.2 of `REQUIREMENTS.md`). If it issued account-bound credentials without the caller proving control of that account, an invite holder could get tokens for someone else's account | L | H | SC-AUTH-11 | Low (SC-AUTH-11) |
 
 ### 4.7 Abuse cases specific to location sharing
 
 | ID | Abuse case | Response |
 |---|---|---|
-| AB-01 | An abusive partner uses Halfsies to learn a victim's home area | The victim chooses their own starting point, which does not have to be home (FR-ORG-01). The counterpart only ever sees the snapped area (PRIV-03). The victim can leave at any time (FR-SES-05). There is no in-product block or report function in v1 (UNKNOWN whether one is needed, SQ-09) |
-| AB-02 | Repeated sessions with the same person, to trilaterate over time | Each session exposes only snapped areas and rounded times. Whether to limit repeat sessions between the same accounts is TO BE DECIDED (SQ-09) |
+| AB-01 | An abusive partner uses Halfsies to learn a victim's home area | The victim chooses their own starting point, which does not have to be home (FR-ORG-01). The counterpart only ever sees the snapped area (PRIV-03). The victim can leave at any time (FR-SES-05). An account holder can block the other account: the blocked pair cannot create or redeem sessions with each other, and the block is silent to the blocked user (`POST /v1/blocks`, `DELETE /v1/blocks/{accountId}`). Any participant, guests included, can report the other (`POST /v1/sessions/{id}/reports`): a reason from an enum plus optional free text of at most 500 characters, and no location data. Reports are stored in `abuse_reports`, notify abuse@halfsies.app, and are reviewed within 7 days. No automated action is taken beyond the reporter's block. Guests cannot block; they leave the session |
+| AB-02 | Repeated sessions with the same person, to trilaterate over time | Each session exposes only snapped areas and rounded times. No repeat-session limit beyond block (AB-01): a blocked pair cannot start another session |
 | AB-03 | A shared or borrowed device reveals past Plans | Offline cache holds only the Plan summary (NFR-AV-03). Sign-out clears user-scoped state (SC-MOB-04) |
 
 ### 4.8 Accepted residual risks
 
 | ID | Risk | Accepted by | Revisit |
 |---|---|---|---|
-| RR-01 | Trilateration from travel times, including from a single search, plus the rank, `even`, and filter oracles that remain after SC-PRIV-07 and SC-PRIV-08 (T-22, T-52, T-53, PRIV-06) | TO BE DECIDED (Security and Product, OD-06, OD-10) | M4 |
-| RR-02 | Region inference from result geometry (T-23) | TO BE DECIDED | M4 |
-| RR-03 | A forwarded invite is a bearer credential (T-07) | TO BE DECIDED | M2 |
-| RR-04 | Software-backed DPoP keys on Android devices without StrongBox or TEE (SD-01) | TO BE DECIDED | M1 |
+| RR-01 | Trilateration from travel times, including from a single search, plus the rank, `even`, and filter oracles that remain after SC-PRIV-07 and SC-PRIV-08 (T-22, T-52, T-53, PRIV-06) | Project owner (Security and Product) | M4 |
+| RR-02 | Region inference from result geometry (T-23) | Project owner (Security and Product) | M4 |
+| RR-03 | A forwarded invite is a bearer credential (T-07) | Project owner (Security and Product) | M2 |
+| RR-04 | Software-backed DPoP keys on Android devices without StrongBox or TEE (SD-01) | Project owner (Security and Product) | M1 |
 | RR-05 | Client-side checks are bypassable on rooted or jailbroken devices (T-18) | Inherent; server enforcement is the control | Never |
-| RR-06 | The other participant sees when you change your origin or act in the session (T-63) | TO BE DECIDED | M3 |
-| RR-07 | Google Maps Platform can link the two origins of a search (T-64) | TO BE DECIDED | M4 |
+| RR-06 | The other participant sees when you change your origin or act in the session (T-63) | Project owner (Security and Product) | M3 |
+| RR-07 | Google Maps Platform can link the two origins of a search (T-64) | Project owner (Security and Product) | M4 |
 
 ### 4.9 Privacy threats (LINDDUN)
 
@@ -263,12 +263,12 @@ LINDDUN was applied to every personal-data flow of assets AS-01 to AS-09. Threat
 
 | ID | LINDDUN type | Threat | Controls | Residual |
 |---|---|---|---|---|
-| T-60 | Identifying | A geohash-6 cell is about 1.2 km by 0.6 km. In low-density areas one cell can hold only a few homes, so the snapped area and its label (PRIV-03) can identify a residence. A fixed precision gives no population-based anonymity | SC-PRIV-01 | TO BE DECIDED (SQ-24) |
-| T-61 | Linking | Plans are kept for account holders until the account is deleted (section 6.3 of `REQUIREMENTS.md`). The retention of `sessions` and `participants` rows for accounts is not specified. The database can therefore build up a history of which two accounts met where and when, which is exposed to breaches, insiders, and legal demands | SC-DATA-04 | TO BE DECIDED (OD-12) |
-| T-62 | Unawareness | The location pre-prompt says the other person never sees "your exact location" (`DESIGN.md` P-2), and P-4 summarizes what is shared. Neither says that the other person sees your travel time to every result, which can approximate your origin (T-22). Users may choose their home as a starting point based on a false premise | SC-PRIV-04, SC-PRIV-11 | Low once `DESIGN.md` DQ-8 is resolved |
+| T-60 | Identifying | A geohash-6 cell is about 1.2 km by 0.6 km. In low-density areas one cell can hold only a few homes, so the snapped area and its label (PRIV-03) can identify a residence. A fixed precision gives no population-based anonymity | SC-PRIV-01 | Low. Snapping uses geohash-5 where the geohash-6 cell has fewer than 500 residents (SC-PRIV-01) |
+| T-61 | Linking | Plans are kept for account holders until the account is deleted (section 6.3 of `REQUIREMENTS.md`). The retention of `sessions` and `participants` rows for accounts is not specified. The database can therefore build up a history of which two accounts met where and when, which is exposed to breaches, insiders, and legal demands | SC-DATA-04 | Low. `sessions` and `participants` rows are purged at session expiry for everyone; only the Plan summary is kept (section 6.3 of `REQUIREMENTS.md`) |
+| T-62 | Unawareness | The location pre-prompt says the other person never sees "your exact location" (`DESIGN.md` P-2), and P-4 summarizes what is shared. Neither says that the other person sees your travel time to every result, which can approximate your origin (T-22). Users may choose their home as a starting point based on a false premise | SC-PRIV-04, SC-PRIV-11 | Low. `DESIGN.md` P-2 and P-4 now disclose approximate area and travel times |
 | T-63 | Detecting | The other participant can see when you change your origin or mode, because the session `version` and ETag change and searches go stale. They can also see when you are active, from proposals and acceptances. This is inherent to a shared session | none | Accepted (RR-06) |
 | T-64 | Data disclosure (third party) | For every search, Google Maps Platform receives both precise origins from the same server within the same second. The map SDK on the device also requests tiles around the user's own area. No user identifiers are sent (TBE-06), but the provider can link the two origins of a search | TBE-06, `ARCHITECTURE.md` 10.3 | Accepted for v1 (RR-07). The PRIV-09 privacy labels must name the provider |
-| T-65 | Non-compliance | `REQUIREMENTS.md` sets no minimum user age. Sharing location with an invite holder carries more risk for minors, and store policy and children's privacy law both depend on the answer | none | TO BE DECIDED (OD-11) |
+| T-65 | Non-compliance | Without a minimum age, sharing location with an invite holder carries more risk for minors, and store policy and children's privacy law both depend on the answer | Age attestation (FR-ACC-07) | Low. Minimum age 16, attested at sign-in and guest join; store rating 12+ (Apple) and Teen (Google). GDPR-K review before any EU launch (PRIV-10) |
 
 ### 4.10 Attack trees
 
@@ -321,7 +321,7 @@ Shared defensive nodes: the response allowlist (API-SHP-02, SC-PRIV-07) and SEC-
 
 | Method | Applied to | Not assessed, and why |
 |---|---|---|
-| STRIDE | EP-01 to EP-09 and each boundary TB-1 to TB-6 and TB-P, all six categories | Human and administrative access (no evidence; SQ-03). Incident response (section 10 is TO BE DECIDED). Terraform and IAM policies (not written yet) |
+| STRIDE | EP-01 to EP-09 and each boundary TB-1 to TB-6 and TB-P, all six categories | Human and administrative access (designed in section 10, no evidence yet). Incident response (section 10; runbooks not written yet). Terraform and IAM policies (not written yet) |
 | LINDDUN | The personal-data flows of AS-01 to AS-09, all seven types | Legal applicability is not assessed (PRIV-10 is owned by Legal) |
 | Attack trees | G-1 to G-4 above | Estimates are not recorded, because the evidence has no cost or skill method |
 | AI and ML (stage 05) | Not applicable | The system has no model, retrieval, or agent component. AI-generated code is covered by QA-08 |
@@ -339,23 +339,23 @@ All evidence comes from design documents, and every conclusion rests on those do
 
 | ID | Requirement or control | Traces to | Verify |
 |---|---|---|---|
-| SEC-AUTH-01 | Apps MUST authenticate users via OpenID Connect Authorization Code flow with PKCE (S256), using the system browser or platform auth session (`ASWebAuthenticationSession`, Android Custom Tabs) per RFC 8252. Embedded WebViews for login are prohibited. Sign in with Apple MAY use the native `AuthenticationServices` API. Control: OIDC redirects arrive only on verified links (RN-LNK-01); `state` and `nonce` are single-use, bound to the pending flow, and checked before dispatch | RFC 8252 | MASTG. Code review. SQ-05 |
+| SEC-AUTH-01 | Apps MUST authenticate users via OpenID Connect Authorization Code flow with PKCE (S256), using the system browser or platform auth session (`ASWebAuthenticationSession`, Android Custom Tabs) per RFC 8252. Embedded WebViews for login are prohibited. Sign in with Apple MAY use the native `AuthenticationServices` API. Apple's web flow on Android uses PKCE if Apple's authorize endpoint supports it; otherwise it is a documented exception, compensated by confidential-client redemption (SD-05) and the DPoP-bound nonce (SC-AUTH-09). Control: OIDC redirects arrive only on verified links (RN-LNK-01); `state` and `nonce` are single-use, bound to the pending flow, and checked before dispatch | RFC 8252 | MASTG. Code review |
 | SEC-AUTH-02 | Implicit grant and Resource Owner Password Credentials grant MUST NOT be used (RFC 9700 sections 2.1.2, 2.4) | RFC 9700 | Code review |
 | SEC-AUTH-03 | The Halfsies API issues its own access and refresh tokens after validating the IdP ID token (signature, `iss`, `aud`, `exp`, `nonce`). Apps MUST NOT send IdP tokens to the API for ongoing authorization. Control: per IdP, the signature is checked against that IdP's JWKS with `alg` pinned per IdP, plus `iat` skew and `nonce` equal to the stored value. The API redeems codes itself (SD-05) | ASVS V10 | Fixture tests with tampered tokens |
 | SEC-AUTH-04 | Access tokens: lifetime at most 15 minutes, audience-restricted to the Halfsies API. Control: JWT signed with ES256, claims `iss`, `aud=api.<domain>`, `sub`, `sub_type` (`account` or `guest`), `sid` (guest only), `cnf.jkt`, `iat`, `exp`, `jti`. The verifier accepts only ES256, a known `kid`, the expected `iss` and `aud`, an unexpired `exp`, and a `cnf.jkt` that matches the DPoP proof. `alg` values outside the allowlist are rejected before any key lookup. Signing keys: SC-SEC-03 | ASVS V9 | Negative tests: `none`, HS256, unknown `kid`, expired, wrong `aud` |
 | SEC-AUTH-05 **[AC]** | Refresh tokens MUST rotate on every use. Reuse of a previously used refresh token MUST revoke the entire token family (RFC 9700 section 4.14.2). AC: replaying a rotated refresh token returns 401 and invalidates the current token. Control: refresh tokens are 256-bit CSPRNG values stored as SHA-256 and rotated by a conditional update (`ARCHITECTURE.md` 7.2); reuse emits a `token_reuse` event. The app's token manager single-flights refreshes, so a legitimate client never presents a token twice and any reuse is treated as theft | RFC 9700 | SEC-AUTH-05 test. Server and app concurrency tests |
-| SEC-AUTH-06 | Tokens SHOULD be sender-constrained with DPoP (RFC 9449) using a non-exportable key held in Secure Enclave (iOS) or hardware-backed Android Keystore where available. If DPoP is deferred, the decision and compensating controls are recorded in SD-01. Control: `halfsies-device-security` creates a P-256 key on first sign-in (Secure Enclave; StrongBox or TEE; software Keystore fallback per SD-01). Once SD-01 is confirmed, every request carries a proof (`htm`, `htu`, `iat`, `jti`, and `ath` for resource requests). The API checks the signature, compares the key thumbprint with `cnf.jkt`, requires `iat` within ±60 s, and rejects a repeated `jti` using Redis. Refresh tokens are bound to the `jkt` at issuance | RFC 9449 | Replay and wrong-key tests |
-| SEC-AUTH-07 | Refresh token absolute lifetime: 30 days for accounts, session lifetime for guests | ASVS V7 | TO BE DECIDED |
+| SEC-AUTH-06 | Tokens SHOULD be sender-constrained with DPoP (RFC 9449) using a non-exportable key held in Secure Enclave (iOS) or hardware-backed Android Keystore where available. If DPoP is deferred, the decision and compensating controls are recorded in SD-01. Control: `halfsies-device-security` creates a P-256 key on first sign-in (Secure Enclave; StrongBox or TEE; software Keystore fallback per SD-01). Every request carries a proof (`htm`, `htu`, `iat`, `jti`, and `ath` for resource requests). The API checks the signature, compares the key thumbprint with `cnf.jkt`, requires `iat` within ±60 s, and rejects a repeated `jti` using Redis. Refresh tokens are bound to the `jkt` at issuance | RFC 9449 | Replay and wrong-key tests |
+| SEC-AUTH-07 | Refresh token absolute lifetime: 30 days for accounts, session lifetime for guests | ASVS V7 | Test |
 | SEC-AUTH-08 | Sign-out MUST revoke the refresh token server-side and delete local credentials. Control: `POST /v1/auth/revoke` revokes the whole family; the app clears state per SC-MOB-04 | ASVS V7 | App test |
 | SC-AUTH-05 | Immediate revocation: the subject denylist (`ARCHITECTURE.md` 7.3) is checked on every request and set for the access token lifetime on account deletion and on family revocation | FR-ACC-04, SEC-AUTH-05 | FR-ACC-04 test |
 | SC-AUTH-07 | Accounts are keyed by (`idp_provider`, `idp_subject`) only. They are **never** linked or merged by email address, and email is not used as an identifier | FR-ACC-06; OWASP Authentication Cheat Sheet | Test: same email from a different IdP creates a separate account |
-| SC-AUTH-09 | The API MUST be able to verify that the client redeeming an authorization code is the one that requested it (T-46). PKCE is required on every flow that supports it. Until SQ-19 is resolved, a flow without PKCE (native Sign in with Apple) derives its `nonce` from the caller's DPoP key thumbprint plus a random value. The API recomputes that binding at redemption, so a code and nonce stolen from one device cannot be redeemed with another key | SEC-AUTH-03, RFC 9700 | Code-injection test using a second DPoP key |
+| SC-AUTH-09 | The API MUST be able to verify that the client redeeming an authorization code is the one that requested it (T-46). PKCE is required on every flow that supports it. A flow without PKCE (native Sign in with Apple) derives its `nonce` from the caller's DPoP key thumbprint plus a random value. The API recomputes that binding at redemption, so a code and nonce stolen from one device cannot be redeemed with another key | SEC-AUTH-03, RFC 9700 | Code-injection test using a second DPoP key |
 | SC-AUTH-10 | The DPoP `htu` check compares against the API's configured canonical external origin plus the request path. It never uses `Host`, `X-Forwarded-Host`, or `X-Forwarded-Proto` (T-50) | RFC 9449 | Test with a spoofed `Host` header |
-| SC-AUTH-11 | `POST /v1/invites/redeem` issues guest credentials only. A signed-in invitee sends their account access token and DPoP proof with the redemption. The API then binds the participant row to that user ID and issues no new tokens. Redemption never issues account credentials on the strength of the invite alone (T-59, SQ-21) | SEC-INV-04 | Redemption tests: no token, guest token, account token |
-| SC-AUTH-12 | Redis security keys (`deny:sub:*`, `dpop:jti:*`) MUST NOT be subject to memory eviction. When Redis is unreachable, the denylist and replay checks fail closed on `/v1/me*`, `/v1/auth/*`, invite redemption, and every session write. The behavior on read-only routes is TO BE DECIDED (T-58, SQ-23) | JS-ASY-02 | Fault-injection test |
+| SC-AUTH-11 | `POST /v1/invites/redeem` issues guest credentials only. A signed-in invitee sends their account access token and DPoP proof with the redemption. The API then binds the participant row to that user ID and issues no new tokens. Redemption never issues account credentials on the strength of the invite alone (T-59) | SEC-INV-04 | Redemption tests: no token, guest token, account token |
+| SC-AUTH-12 | Redis security keys (`deny:sub:*`, `dpop:jti:*`) MUST NOT be subject to memory eviction. When Redis is unreachable, the denylist and replay checks fail closed on `/v1/me*`, `/v1/auth/*`, invite redemption, and every session write. Denylist entries are also written to Aurora; when Redis is lost, denylist checks fall back to Aurora. Read-only routes accept requests after the Aurora denylist check, with degraded replay protection (T-58) | JS-ASY-02 | Fault-injection test |
 | SC-AUTH-08 | Guest upgrade (`grant_type=guest_upgrade`) requires both a valid guest access token (with DPoP) and a fresh IdP authorization code in the same request. In one transaction it re-points exactly one participant row from `guest_id` to `user_id`, deletes the guest row, and revokes the guest token family | FR-ACC-03 | Test that one guest cannot upgrade into another guest's session |
 
-Authenticator lifecycle (NIST SP 800-63B-4): Halfsies holds no passwords or OTP authenticators. Authentication is delegated to Apple and Google, so AAL is inherited from the IdP (ASSUMPTION: AAL1 is sufficient for v1; SQ-02). Account recovery is IdP recovery.
+Authenticator lifecycle (NIST SP 800-63B-4): Halfsies holds no passwords or OTP authenticators. Authentication is delegated to Apple and Google, so AAL is inherited from the IdP (AAL1, sufficient for v1). Account recovery is IdP recovery.
 
 ### 5.2 Invites and guest access
 
@@ -390,10 +390,10 @@ Authenticator lifecycle (NIST SP 800-63B-4): Halfsies holds no passwords or OTP 
 | SEC-VAL-02 | Latitude in [-90, 90], longitude in [-180, 180], finite numbers only. Travel mode, category, and price are enums | ASVS V2 | Boundary tests |
 | SEC-VAL-03 | Strings have maximum lengths: display name 50, autocomplete query 120, area label 80. Display names are Unicode-normalized (NFC) and stripped of control and bidi override characters | ASVS V2 | Oversize and boundary tests |
 | SEC-VAL-04 | Meeting time MUST be within [now minus 5 minutes, now plus 14 days], parsed per JS-NUM-03 | ASVS V2 | Boundary tests |
-| SEC-VAL-05 | Database access MUST use parameterized queries or a query builder that parameterizes by default. Control: the Kysely `sql.raw` and `sql.lit` escape hatches are banned outside reviewed migrations | ASVS V1 | Lint rule (TO BE DECIDED) and code review |
+| SEC-VAL-05 | Database access MUST use parameterized queries or a query builder that parameterizes by default. Control: the Kysely `sql.raw` and `sql.lit` escape hatches are banned outside reviewed migrations | ASVS V1 | Lint rule (custom Kysely rule) and code review |
 | SC-VAL-04 | The JSON parser rejects `__proto__` and `constructor.prototype` keys (Fastify secure JSON parsing, `protoAction` and `constructorAction` set to `error`) | JS-OBJ-02 | Negative tests |
 | SC-VAL-06 | `Idempotency-Key` values are bounded in length and charset, and keyed per subject | API-05 | Unit tests |
-| SC-VAL-07 | Idempotency replay (API-05) MUST NOT store secrets (T-51). `POST /v1/auth/token` and `POST /v1/invites/redeem` do not store responses, and a repeated key returns 409. For `POST .../invites`, the stored record omits the invite secret, a replay returns 409, and the Initiator rotates the invite instead (FR-SES-04). This conflicts with API-05 (SQ-22); this control applies until the conflict is resolved | SEC-INV-02, SEC-AUTH-05 | Test that inspects `idempotency_keys` after each `POST` |
+| SC-VAL-07 | Idempotency replay (API-05) MUST NOT store secrets (T-51). `POST /v1/auth/token` and `POST /v1/invites/redeem` do not store responses, and a repeated key returns 409. For `POST .../invites`, the stored record omits the invite secret, a replay returns 409, and the Initiator rotates the invite instead (FR-SES-04). API-05 excludes these responses from replay | SEC-INV-02, SEC-AUTH-05 | Test that inspects `idempotency_keys` after each `POST` |
 | SC-VAL-08 | A proposal names a result, not a place. The request body is `{ searchId, placeId }` from a current, unexpired search in the same session. The server copies the name and coordinates from the stored `results` row. The client never supplies a place name or coordinates (T-48) | FR-RES-03 | Contract test. Tests with a foreign, stale, or expired `searchId` |
 
 ### 5.5 Rate limiting, cost, and abuse (API4, API6)
@@ -401,13 +401,13 @@ Authenticator lifecycle (NIST SP 800-63B-4): Halfsies holds no passwords or OTP 
 | ID | Requirement or control | Traces to | Verify |
 |---|---|---|---|
 | SEC-RL-01 | Per-token and per-IP rate limits on all endpoints, returning 429 with `Retry-After`. Control: per-IP limits apply at the WAF (TBE-01) and in the app | API4:2023 | Load tests |
-| SEC-RL-02 | Invite redemption: maximum 10 attempts per IP per hour and 5 failures per session before the invite is revoked. Control: failures are counted per invite (SQ-13) | API4:2023 | Tests |
+| SEC-RL-02 | Invite redemption: maximum 10 attempts per IP per hour and 5 failures per session before the invite is revoked. Control: failures are counted per invite | API4:2023 | Tests |
 | SEC-RL-03 | Searches: maximum 20 per session per hour. Autocomplete: maximum 60 per minute per user. Control: a search served from the FR-SRCH-11 cache does not count toward the limit | API6:2023 | Tests |
-| SEC-RL-04 | Account creation and session creation limits per account and device to deter automated abuse. Values TO BE DECIDED | API6:2023 | TO BE DECIDED |
+| SEC-RL-04 | Account creation and session creation limits per account and device to deter automated abuse. Values: 3 account creations per device per day; 20 session creations per account per day, and 5 per guest device per day | API6:2023 | Tests |
 | SEC-RL-05 | The API SHOULD verify app integrity using App Attest (iOS) and Play Integrity API (Android) on session creation, invite redemption, and search. Failed attestation increases rate-limit strictness; it MUST NOT be the sole control | MASVS-RESILIENCE | Tests with an attestation stub |
 | SC-COST-02 | Provider calls made by a guest count against both the guest's limits and the session Initiator's per-user budget and search limits, so self-invites do not multiply spend (T-57) | NFR-COST-02 | Budget test using several sessions with self-redeemed guests |
-| SC-RL-06 | Attestation evidence (SEC-RL-05) is accepted only if it is bound to a single-use server challenge or to a hash of the request it accompanies, within a short validity window. Evidence that is not bound this way counts as failed attestation. The source of the challenge is TO BE DECIDED (T-47, SQ-20) | SEC-RL-05 | Replay test with a captured attestation |
-| SC-COST-01 | Provider budget counters (NFR-COST-02) live in Redis and are checked before every provider call; a failed or exhausted check fails closed (JS-ASY-02) | NFR-COST-02 | Budget exhaustion test. Values TO BE DECIDED (OD-08) |
+| SC-RL-06 | Attestation evidence (SEC-RL-05) is accepted only if it is bound to a single-use server challenge or to a hash of the request it accompanies, within a short validity window. Evidence that is not bound this way counts as failed attestation. Evidence is bound to a hash of the request; there is no challenge endpoint (T-47) | SEC-RL-05 | Replay test with a captured attestation |
+| SC-COST-01 | Provider budget counters (NFR-COST-02) live in Redis and are checked before every provider call; a failed or exhausted check fails closed (JS-ASY-02) | NFR-COST-02 | Budget exhaustion test. Values per OD-08 |
 
 ### 5.6 Transport and HTTP hardening (ASVS V12, V13; MASVS-NETWORK)
 
@@ -425,13 +425,13 @@ Node server limits are NODE-HTTP-01 to NODE-HTTP-04.
 | ID | Requirement or control | Traces to | Verify |
 |---|---|---|---|
 | SC-PRIV-01 | Area labels are reverse-geocoded from the snapped cell center, never from the precise coordinate, so a label cannot carry more precision than the cell | PRIV-03 | PRIV-03 property test |
-| SC-PRIV-03 | **Proposed** (SD-03, OD-06): the serializer rounds both `tA` and `tB` to the nearest 60 s in every response. Ranking and the `even` flag are computed on unrounded values before serialization | PRIV-06 | Unit tests, once confirmed |
+| SC-PRIV-03 | Adopted (SD-03, OD-06): the serializer rounds both `tA` and `tB` to the nearest 60 s in every response. Ranking and the `even` flag are computed on unrounded values before serialization | PRIV-06 | Unit tests |
 | SC-PRIV-06 | Results derived from an origin are deleted in the same transaction that removes or replaces that origin: when a participant leaves (FR-SES-05), changes origin (FR-ORG-06), or deletes their account (FR-ACC-04). `GET .../searches/{searchId}` returns 404 for a deleted search (T-54) | FR-SES-05, FR-ORG-06 | Test: leave the session, then fetch the earlier search |
 | SC-PRIV-07 | The result DTO exposes only the FR-RES-01 fields plus the place ID and coordinate. `score`, unrounded times, the tie-break rating, and internal ranks are not serialized, and the contract test fails if any other numeric field appears (T-53) | API-SHP-02 | Contract test |
-| SC-PRIV-08 | **Proposed** (OD-10): each participant's maximum travel time applies only to their own time and can be set only by them. It is stored with their mode and never returned to the other participant. This narrows the T-52 oracle but does not remove it, and the remainder is part of RR-01 | FR-SRCH-02 | Tests, once confirmed |
+| SC-PRIV-08 | Adopted (OD-10): each participant's maximum travel time applies only to their own time and can be set only by them. It is stored with their mode and never returned to the other participant. This narrows the T-52 oracle but does not remove it, and the remainder is part of RR-01 | FR-SRCH-02 | Tests |
 | SC-PRIV-11 | User-facing privacy text (`DESIGN.md` P-2 and P-4, and the PRIV-09 store labels) says that the other person sees your travel time to each result. It MUST NOT claim that your exact location cannot be inferred (T-62) | PRIV-08 | Copy review. PRIV-08 E2E test |
 | SC-PRIV-04 | The "Who can see what" screen text is generated from the same field inventory as the DTO allowlist | PRIV-08, `DESIGN.md` P-4 | E2E test |
-| SC-PRIV-05 | The SEC-SC-01 dependency review checks every SDK against PRIV-02 and PRIV-11 | PRIV-02, PRIV-11 | Dependency review. SQ-12 |
+| SC-PRIV-05 | The SEC-SC-01 dependency review checks every SDK against PRIV-02 and PRIV-11 | PRIV-02, PRIV-11 | Dependency review. Sentry DPA signed before M5 |
 
 ### 5.8 Cryptography, keys, and secrets (ASVS V11, V13; MASVS-CRYPTO; API10)
 
@@ -443,7 +443,7 @@ Node server limits are NODE-HTTP-01 to NODE-HTTP-04.
 | SEC-SEC-01 | Place, routing, and geocoding provider API keys MUST live only on the server, loaded from a secrets manager. Control: the same applies to IdP, APNs, and FCM credentials and signing keys (SC-SEC-03). They are loaded at startup into frozen configuration (NODE-ENV-02) and never placed in `process.argv`, image-baked environment files, or logs (NODE-ENV-03) | API10:2023 | Image scan, secret scanning |
 | SEC-SEC-02 | The only keys permitted in the app are map SDK display keys, restricted by bundle ID and Android package name plus signing certificate fingerprint, with usage quotas set. Control: server keys are restricted by API and to the NAT egress IPs | API10:2023 | Release checklist. Secret scanning on the built bundle (RN-TRUST-02) |
 | SEC-SEC-03 | Provider responses MUST be validated against expected schemas before use. Malformed responses are dropped and logged. Provider-supplied URLs (photos, websites) are validated as `https` before being returned to clients. Control: Zod schemas in each adapter; malformed responses are logged by shape, never by content; the server never fetches provider-supplied URLs | API10:2023 | Fixture tests (QA-03) |
-| SC-SEC-03 | Keys and secrets are stored and rotated per the table below | Secrets Management Cheat Sheet | Runbook (TO BE DECIDED) |
+| SC-SEC-03 | Keys and secrets are stored and rotated per the table below | Secrets Management Cheat Sheet | Runbook in `docs/runbooks/` before M5 |
 
 | Key or secret | Store | Rotation |
 |---|---|---|
@@ -460,7 +460,7 @@ Node server limits are NODE-HTTP-01 to NODE-HTTP-04.
 | SEC-LOG-01 | Security events are logged with timestamp, correlation ID, actor ID, and outcome: sign-in, token refresh failure, token reuse detection, invite created/redeemed/failed/revoked, authorization failures, rate-limit triggers, account deletion. Control: they go to the dedicated CloudWatch Logs group `halfsies-security`, with retention per section 6.3 of `REQUIREMENTS.md` | ASVS V16 | Event emission tests |
 | SEC-LOG-02 | Logs MUST comply with PRIV-05. Tokens, invite tokens, and authorization headers MUST be redacted. Control: `pino` redaction removes `authorization`, `dpop`, `cookie`, `set-cookie`, `req.query.q`, and every body field. A final serializer masks decimal coordinate pairs, the invite token format, and JWT-shaped strings. Request logs record route templates (`/v1/sessions/:sessionId`), not raw URLs. OpenTelemetry spans carry no request-parameter attributes; HTTP instrumentation drops `url.query` and provider request bodies | PRIV-05 | PRIV-05 leak test |
 | SEC-LOG-03 | Alerts fire on refresh token reuse, spikes in authorization failures, and invite brute-force patterns. Control: CloudWatch metric filters and alarms, routed to on-call through SNS | ASVS V16 | Alarm tests in staging |
-| SC-LOG-04 | Security log integrity: CloudTrail enabled and protected by SCP. Immutability of the log group (for example export to a locked archive account) is TO BE DECIDED | Logging Cheat Sheet | SQ-03 |
+| SC-LOG-04 | Security log integrity: CloudTrail enabled and protected by SCP. CloudTrail and security logs are exported to an S3 bucket in a separate log-archive account with Object Lock (compliance mode, 1 year) | Logging Cheat Sheet | Config test |
 | SC-LOG-05 | Log sinks outside the application exclude query strings, because `GET /v1/places/autocomplete?q=` carries address text: CloudFront standard logging (v2) uses a field allowlist without the query string; ALB access logs are disabled because their format cannot omit it; WAF logs redact the query string and the `authorization` and `dpop` headers | PRIV-05 | PRIV-05 leak test covers each sink |
 
 ### 5.10 Mobile app (MASVS)
@@ -473,7 +473,7 @@ Node server limits are NODE-HTTP-01 to NODE-HTTP-04.
 | SEC-MOB-04 | Release builds MUST disable debug logging, debuggable flags, and developer menus. Control: release builds also have no console output, remote debugging, packager access, debug certificates, or test endpoints | MASVS-RESILIENCE | Release checklist. CI release config check |
 | SEC-MOB-05 | Clipboard MUST NOT be used for tokens. Invite links are shared only through the OS share sheet | MASVS-PLATFORM | Code review |
 | SEC-MOB-06 | Deep link handlers MUST validate host, path, and parameters against an allowlist and ignore unknown parameters. Control: the handler also checks the scheme, and the invite handler takes exactly one fragment parameter. Consequential actions need confirmation (RN-LNK-03) | MASVS-PLATFORM | Deep link fuzz tests |
-| SC-MOB-03 | Screens showing precise origins or the invite are protected from screenshots and the app switcher preview (ASSUMPTION; `DESIGN.md` does not specify this; SQ-14) | MASVS-PLATFORM | TO BE DECIDED |
+| SC-MOB-03 | Screens showing the user's own precise origin or an active invite link are protected: iOS hides content in the app switcher snapshot; Android sets `FLAG_SECURE` (`DESIGN.md` rule) | MASVS-PLATFORM | MASTG |
 | SC-MOB-04 | On sign-out, account deletion, account switch, guest upgrade, and revocation (a 401 after a failed refresh), the app clears tokens, the DPoP key, the TanStack Query cache, MMKV, and user-scoped files | SEC-AUTH-08 | App test |
 | SC-MOB-06 | Sentry runs with `sendDefaultPii: false`, and a `beforeSend` and breadcrumb scrubber drops URLs, query strings, and request bodies | OBS-03, PRIV-05 | PRIV-05 leak test includes Sentry |
 | SC-MOB-08 | `Linking.openURL` targets come only from an exact allowlist: Apple Maps, Google Maps, and the legal page URLs. `canOpenURL` is not a safety check | FR-RES-06 | Unit tests |
@@ -504,9 +504,9 @@ Node server limits are NODE-HTTP-01 to NODE-HTTP-04.
 
 | ID | Requirement or control | Traces to | Verify |
 |---|---|---|---|
-| SC-WEB-01 | Static pages send `Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` (plus `script-src` only if a page needs script, TO BE DECIDED), along with `Referrer-Policy: no-referrer` and `X-Content-Type-Options: nosniff` | INT-06; XSS Prevention Cheat Sheet | Header test |
+| SC-WEB-01 | Static pages send `Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` (no `script-src`; static pages need no script), along with `Referrer-Policy: no-referrer` and `X-Content-Type-Options: nosniff` | INT-06; XSS Prevention Cheat Sheet | Header test |
 | SC-WEB-02 | The invite fallback page MUST NOT read or render the invite token. It contains no script that reads `location.hash` and no third-party resources | INT-06 | Page review |
-| SC-WEB-03 | `logo.svg` and every SVG asset, including logo variants, contain no scripts, event handlers, `foreignObject`, or external references | XSS Prevention Cheat Sheet | CI check (TO BE DECIDED) |
+| SC-WEB-03 | `logo.svg` and every SVG asset, including logo variants, contain no scripts, event handlers, `foreignObject`, or external references | XSS Prevention Cheat Sheet | CI check (SVG check script) |
 
 ### 5.15 Supply chain and CI/CD (NIST SSDF)
 
@@ -514,10 +514,10 @@ Node server limits are NODE-HTTP-01 to NODE-HTTP-04.
 |---|---|---|---|
 | SEC-SEC-04 | Secrets MUST NOT be committed. CI runs secret scanning on every push and blocks merges on findings. Control: GitHub secret scanning with push protection, and gitleaks | NIST SSDF | CI |
 | SEC-SC-01 | Every third-party dependency (app and API) requires a documented review before adoption: known CVEs, maintenance activity, patch cadence, license, and transitive dependency count. Reviews are recorded in `DEPENDENCIES.md` | NIST SSDF | PR checklist |
-| SEC-SC-02 | Dependencies are version-pinned with lockfiles. Software composition analysis runs in CI and blocks on critical or high vulnerabilities without a documented exception. Control: one committed lockfile and `npm ci` everywhere; lifecycle scripts are disabled by default (`--ignore-scripts`), with an allowlist for reviewed packages; SCA uses Dependabot and OSV-Scanner; exceptions carry an expiry date. Patch SLAs are TO BE DECIDED (SQ-15) | NIST SSDF | CI |
+| SEC-SC-02 | Dependencies are version-pinned with lockfiles. Software composition analysis runs in CI and blocks on critical or high vulnerabilities without a documented exception. Control: one committed lockfile and `npm ci` everywhere; lifecycle scripts are disabled by default (`--ignore-scripts`), with an allowlist for reviewed packages; SCA uses Dependabot and OSV-Scanner; exceptions carry an expiry date. Patch SLAs per section 10 | NIST SSDF | CI |
 | SEC-SC-03 | Each release produces an SBOM (CycloneDX or SPDX) for both apps and the API | NIST SSDF | Release audit |
 | SEC-SC-04 | Release builds are produced only by CI from protected branches. App signing keys are held in platform-managed signing (App Store Connect, Play App Signing) or an HSM-backed store. Release pipeline: `ARCHITECTURE.md` 14.3 | NIST SSDF | Release audit |
-| SC-CICD-01 | GitHub Actions: `permissions:` minimized per workflow, third-party actions pinned to a commit SHA, no `pull_request_target` running untrusted code, production environments with required reviewers | CI/CD Security Cheat Sheet | Workflow lint (TO BE DECIDED) |
+| SC-CICD-01 | GitHub Actions: `permissions:` minimized per workflow, third-party actions pinned to a commit SHA, no `pull_request_target` running untrusted code, production environments with required reviewers | CI/CD Security Cheat Sheet | Workflow lint (actionlint, zizmor) |
 | SC-CICD-02 | AWS deploy roles trust only this repository's OIDC `sub` for the named environment and branch. Each role is scoped to deploy actions | CI/CD Security Cheat Sheet | IaC review |
 | SC-IAC-01 | Terraform state is encrypted, and no secret appears in variables or state outputs. Plan review and Checkov: AD-11 | IaC Security Cheat Sheet | CI |
 
@@ -533,7 +533,7 @@ Each row names what enforces the boundary and how it is verified.
 | TBE-02 | **TB-2 to TB-3**: edge to application | The ALB accepts only the CloudFront origin-facing prefix list **and** a rotated secret origin header. TLS from CloudFront to the ALB. Client IPs come only from the trusted hop count (NODE-HTTP-05) | DAST attempts direct-to-ALB requests. A unit test covers the client-IP derivation |
 | TBE-03 | **Application entry** (inside TB-3) | Every request passes the ordered pipeline in `ARCHITECTURE.md` 5.2. Route policies per SC-AZ-02 | Startup route test. The BOLA suite |
 | TBE-04 | **TB-P**: participant to participant | Writes only through `participants/me` (SC-AZ-03), identity from the token (SEC-AZ-04), the other participant serialized per API-SHP-01 and PRIV-03, rounded travel times (SC-PRIV-03), no derived fields (SC-PRIV-07), per-person filters (SC-PRIV-08), results deleted with their origin (SC-PRIV-06), search limits (SEC-RL-03), proposals that name stored results (SC-VAL-08), and proposal roles read from the database (FR-RES-04) | API-SHP-01 contract test, PRIV-03 property test, FR-ORG-05 and FR-RES-04 tests |
-| TBE-05 | **TB-3 to TB-4**: application to data | Aurora: IAM database authentication through RDS Proxy, no static database passwords, TLS required (`rds.force_ssl`). Redis: reachable only from the app security group, TLS, IAM authentication. Security groups allow only the app tier. SEC-VAL-05. Origin decryption per SC-CRYPTO-01 | IaC policy checks. An IAM Access Analyzer review (ASSUMPTION: Access Analyzer is available in the organization) |
+| TBE-05 | **TB-3 to TB-4**: application to data | Aurora: IAM database authentication through RDS Proxy, no static database passwords, TLS required (`rds.force_ssl`). Redis: reachable only from the app security group, TLS, IAM authentication. Security groups allow only the app tier. SEC-VAL-05. Origin decryption per SC-CRYPTO-01 | IaC policy checks. IAM Access Analyzer, enabled at organization level |
 | TBE-06 | **TB-3 to TB-5**: application to third parties | Egress only through NAT with fixed IPs. Only coordinates are sent to providers, never user identifiers. Responses validated per SEC-SEC-03. Outbound host allowlist and no redirects (NODE-NET-01). Deadlines per JS-ASY-03 | Fixture tests with malformed responses (QA-03) |
 | TBE-07 | **TB-6**: build and deploy to AWS | SC-CICD-01, SC-CICD-02, SC-IAC-01. No long-lived AWS keys. Terraform is applied only by CI (AD-11) | OWASP CI/CD cheat sheet review before M1 exits |
 | TBE-08 | **Device to app**: other apps and the OS | Verified links only (RN-LNK-01, SEC-INV-03). SEC-MOB-01, SEC-MOB-03. No exported Android components beyond the verified link intent filters (RN-NAT-03) | MASTG tests (QA-07) |
@@ -549,9 +549,9 @@ These rules apply to every change to Halfsies code. They are adapted from the Ja
 
 - **Scope tags.** `API` means `services/api` (the api and worker services). `APP` means `apps/mobile`, including native modules. `WEB` means `/web` static pages. `ALL` means everything, including shared `packages/*`, `infra/`, and scripts.
 - **Order.** `JS-*` applies first. `RN-*` and `NODE-*` add to it for their scope. A stricter rule wins.
-- **Enforcement.** `Lint` means an ESLint rule or plugin (the specific plugins are TO BE DECIDED, SQ-16). `Type` means TypeScript compile. `Test` means an automated test. `CI` means a pipeline gate. `Review` means a pull request checklist item (QA-08 applies to AI-generated code too). `Config` means a checked-in configuration asserted by a test.
-- **Exceptions.** A deviation needs a code comment citing the rule ID and an entry in the exceptions log (location TO BE DECIDED, SQ-16), approved by a Security reviewer, with an expiry date.
-- **Versions.** The rule sources target React Native 0.87 and Node.js 26. `ARCHITECTURE.md` selects Node.js 24 LTS and does not pin a React Native version. Rules that depend on a specific version are marked **[v]**, and SQ-04 records the conflict.
+- **Enforcement.** `Lint` means an ESLint rule or plugin (typescript-eslint strict-type-checked, eslint-plugin-security, eslint-plugin-n, eslint-plugin-regexp, eslint-plugin-react-hooks, and custom rules such as the Kysely `sql.raw`/`sql.lit` ban). `Type` means TypeScript compile. `Test` means an automated test. `CI` means a pipeline gate. `Review` means a pull request checklist item (QA-08 applies to AI-generated code too). `Config` means a checked-in configuration asserted by a test.
+- **Exceptions.** A deviation needs a code comment citing the rule ID and an entry in the exceptions log (`docs/security-exceptions.md`), approved by a Security reviewer, with an expiry date.
+- **Versions.** The rule sources target React Native 0.87 and Node.js 26 LTS, which `ARCHITECTURE.md` pins. Rules that depend on a specific version are marked **[v]** and apply.
 
 ### 7.2 JavaScript and TypeScript rules (`JS-*`)
 
@@ -593,15 +593,15 @@ These rules apply to every change to Halfsies code. They are adapted from the Ja
 
 | ID | Rule | Scope | Enforce |
 |---|---|---|---|
-| JS-JSON-01 | Bound input bytes before `JSON.parse`: Fastify `bodyLimit` per route (value TO BE DECIDED; ASSUMPTION 16 KiB default), and a response size cap for provider calls | API | Config |
+| JS-JSON-01 | Bound input bytes before `JSON.parse`: Fastify `bodyLimit` 16 KiB default, with route overrides documented, and a response size cap for provider calls | API | Config |
 | JS-JSON-02 | Treat `JSON.parse` output as unknown until it has been schema-validated. Do not use revivers on untrusted JSON | ALL | Review |
-| JS-JSON-03 | Duplicate keys in security-sensitive bodies (auth and redemption) must be rejected, or proven harmless. Mechanism TO BE DECIDED (SQ-11) | API | Test |
+| JS-JSON-03 | Duplicate keys in security-sensitive bodies (auth and redemption) are rejected with 400 by a duplicate-detecting parser (for example secure-json-parse as a custom Fastify content-type parser) | API | Test |
 
 **Regular expressions and text**
 
 | ID | Rule | Scope | Enforce |
 |---|---|---|---|
-| JS-RGX-01 | No nested ambiguous quantifiers on untrusted text. Bound the length before any regex runs. Test security patterns (log scrubber, token format) with adversarial long inputs | ALL | Lint (TO BE DECIDED), Test |
+| JS-RGX-01 | No nested ambiguous quantifiers on untrusted text. Bound the length before any regex runs. Test security patterns (log scrubber, token format) with adversarial long inputs | ALL | Lint (eslint-plugin-regexp), Test |
 | JS-RGX-02 | Escape user text inserted into a pattern with `RegExp.escape()` **[v]**, or avoid dynamic patterns | ALL | Review |
 
 **Numbers, IDs, and time**
@@ -653,7 +653,7 @@ These rules apply to every change to Halfsies code. They are adapted from the Ja
 
 ### 7.3 React Native rules (`RN-*`)
 
-These add to `JS-*` for `APP`. The source also requires React 19 and TypeScript 7 rule sets. Those were not supplied (SQ-17).
+These add to `JS-*` for `APP`. React 19 and TypeScript 7 baseline: TypeScript `strict`, typescript-eslint strict-type-checked, and the react-hooks rules. There are no separate `REACT-*` or `TS-*` rule sets in v1.
 
 **Client trust**
 
@@ -693,7 +693,7 @@ These add to `JS-*` for `APP`. The source also requires React 19 and TypeScript 
 |---|---|---|
 | RN-NAT-01 | `halfsies-device-security` exposes narrow, typed methods (generate key, sign DPoP, attest, assert). Arguments are validated again in Swift and Kotlin. The private key is never exported | Review, Test |
 | RN-NAT-02 | When the user denies a permission (FR-ORG-03, FR-NOT-03, PRIV-07), the app handles it without weakening any control | UI test |
-| RN-NAT-03 | No exported Android activities, services, or receivers beyond the verified link intent filters and required SDK components. Merged manifests are reviewed every release | CI (manifest check, TO BE DECIDED) |
+| RN-NAT-03 | No exported Android activities, services, or receivers beyond the verified link intent filters and required SDK components. Merged manifests are reviewed every release | CI (merged-manifest check script) |
 | RN-NAT-04 | Third-party native modules are reviewed for exported components, permissions, deep links, storage, network use, and binary provenance (SEC-SC-01) | Review |
 
 **Logging and release**
@@ -706,13 +706,13 @@ These add to `JS-*` for `APP`. The source also requires React 19 and TypeScript 
 
 ### 7.4 Node.js rules (`NODE-*`)
 
-These add to `JS-*` for `API`. Rules marked **[v]** exist only in the Node.js 26 release line. They do not apply on the Node.js 24 LTS runtime that `ARCHITECTURE.md` selects until SQ-04 is resolved.
+These add to `JS-*` for `API`. Rules marked **[v]** exist only in the Node.js 26 release line. They apply, because `ARCHITECTURE.md` pins Node.js 26 LTS.
 
 **Runtime and startup**
 
 | ID | Rule | Enforce |
 |---|---|---|
-| NODE-RT-01 | Pin the exact Node patch version in the image, CI, and `engines`. Verify `process.version` at startup. Take security releases promptly (SLA TO BE DECIDED, SQ-15) | CI, Test |
+| NODE-RT-01 | Pin the exact Node patch version in the image, CI, and `engines`. Verify `process.version` at startup. Take security releases promptly (within 7 days, section 10) | CI, Test |
 | NODE-ENV-01 | Validate required configuration at startup (presence, type, range) and exit non-zero on failure | Test |
 | NODE-ENV-02 | Freeze validated configuration. Later changes to `process.env` have no effect | Test |
 | NODE-ENV-03 | No secrets in `process.argv`. No `--env-file` in production. `NODE_OPTIONS`, `--require`, and `--import` are fixed in the image | Config |
@@ -736,7 +736,7 @@ These add to `JS-*` for `API`. Rules marked **[v]** exist only in the Node.js 26
 | ID | Rule | Enforce |
 |---|---|---|
 | NODE-HTTP-01 | Never enable `insecureHTTPParser`. Keep strict header validation | Config test |
-| NODE-HTTP-02 | Finite `requestTimeout` (below the 300 s default), `headersTimeout`, `keepAliveTimeout` (above the ALB idle timeout), and `server.timeout`, plus a bounded `maxRequestsPerSocket`. Values TO BE DECIDED | Config test |
+| NODE-HTTP-02 | Finite `requestTimeout` 30 s, `headersTimeout` 10 s, `keepAliveTimeout` 65 s (above the 60 s ALB idle timeout), `server.timeout` 30 s, and `maxRequestsPerSocket` 1000 | Config test |
 | NODE-HTTP-03 | Bounded `maxHeadersCount` (never 0). Header size matches the ALB and CloudFront limits | Config test |
 | NODE-HTTP-04 | Reject CR, LF, and control characters in any value copied into a response header | Test |
 | NODE-HTTP-05 | Derive client identity from the trusted proxy chain only: the fixed hop count of CloudFront then ALB. Never take the left-most `X-Forwarded-For` value | Test |
@@ -813,8 +813,8 @@ These add to `JS-*` for `API`. Rules marked **[v]** exist only in the Node.js 26
 | Node: filesystem path handling, uploads, archives, `Content-Disposition` | The API handles no files or uploads (section 4.2 of `REQUIREMENTS.md`). Revisit if uploads are added |
 | Node: `node:sqlite` | The database is Aurora PostgreSQL (ARCHITECTURE AD-07) |
 | Node: child process hardening details | Child processes are banned in services (NODE-PROC-01) |
-| Node: `--allow-openssl-store`, `--secure-heap` | Not needed by the design. `--secure-heap` is TO BE DECIDED as defense in depth |
-| Node: HTTP/2 listener limits | The Node server speaks HTTP/1.1 to the ALB (ASSUMPTION; `ARCHITECTURE.md` does not specify the ALB-to-target protocol). APNs HTTP/2 is outbound only |
+| Node: `--allow-openssl-store`, `--secure-heap` | Not needed by the design. `--secure-heap` is not used |
+| Node: HTTP/2 listener limits | The Node server speaks HTTP/1.1 to the ALB (`ARCHITECTURE.md`). APNs HTTP/2 is outbound only |
 
 
 ---
@@ -823,9 +823,9 @@ These add to `JS-*` for `API`. Rules marked **[v]** exist only in the Node.js 26
 
 | ID | Decision | Status | Rationale and compensating controls |
 |---|---|---|---|
-| SD-01 | **DPoP (SEC-AUTH-06, OD-04).** Ship DPoP in v1 with hardware-backed P-256 keys, and a software Keystore fallback on Android devices without StrongBox or a TEE | **Proposed**. Owner: Security. TO BE DECIDED by M1 | If deferred, the compensating controls are: 15-minute access tokens, refresh rotation with reuse detection, attestation on sensitive endpoints, the subject denylist, and alerting on refresh from a new device or ASN (the new-ASN signal is an ASSUMPTION; not in `ARCHITECTURE.md`) |
-| SD-02 | **Certificate pinning (SEC-TLS-03)** is not implemented in v1, and no pinning code is added unless this decision is revisited with a rotation, backup-pin, and kill-switch design | **Proposed** | Because pinning is not implemented, no kill switch is required. The threats pinning addresses (interception with a rogue CA) are reduced by DPoP binding, platform trust stores with no user CAs in release builds (SEC-TLS-02), and attestation. The outage risk from certificate rotation is avoided |
-| SD-03 | **Trilateration (PRIV-06)** is an accepted residual risk for v1. Mitigations: round displayed times (SC-PRIV-03) and limit searches (SEC-RL-03) | **Proposed**. Owners: Security and Product (OD-06) | See T-22 and RR-01. Evaluate a quantitative trilateration test (how precisely an origin can be recovered within the SEC-RL-03 limit) before M4 |
+| SD-01 | **DPoP (SEC-AUTH-06, OD-04).** Ship DPoP in v1 with hardware-backed P-256 keys, and a software Keystore fallback on Android devices without StrongBox or a TEE | Adopted. Owner: Security | Software Keystore fallback accepted (RR-04). Also in place: 15-minute access tokens, refresh rotation with reuse detection, attestation on sensitive endpoints, the subject denylist, and alerting on refresh from a new device or ASN (`ARCHITECTURE.md` observability) |
+| SD-02 | **Certificate pinning (SEC-TLS-03)** is not implemented in v1, and no pinning code is added unless this decision is revisited with a rotation, backup-pin, and kill-switch design | Adopted | Because pinning is not implemented, no kill switch is required. The threats pinning addresses (interception with a rogue CA) are reduced by DPoP binding, platform trust stores with no user CAs in release builds (SEC-TLS-02), and attestation. The outage risk from certificate rotation is avoided |
+| SD-03 | **Trilateration (PRIV-06)** is an accepted residual risk for v1. Mitigations: round displayed times (SC-PRIV-03) and limit searches (SEC-RL-03) | Adopted. Owners: Security and Product (OD-06) | See T-22 and RR-01. Evaluate a quantitative trilateration test (how precisely an origin can be recovered within the SEC-RL-03 limit) before M4 |
 | SD-04 | **Invite secret in the URL fragment** (`ARCHITECTURE.md` 4.4). Browsers never send the fragment to a server, so it never reaches CloudFront, WAF, or fallback-page request logs, and the static fallback page cannot read it server-side | Adopted | Satisfies SC-WEB-02 and SEC-LOG-02 by construction |
 | SD-05 | **The API redeems IdP codes as a confidential client** (`ARCHITECTURE.md` 8.1) | Adopted | Apple requires a client-secret JWT for code redemption, which cannot live in the app. Doing the same for Google gives one uniform validation path (SEC-AUTH-03) |
 | SD-06 | **Accounts are linked by IdP subject only, never by email** | Adopted (SC-AUTH-07) | Prevents cross-IdP takeover (T-02) |
@@ -845,7 +845,7 @@ These add to `JS-*` for `API`. Rules marked **[v]** exist only in the Node.js 26
 | DAST (OWASP ZAP API scan) and direct-to-ALB bypass attempts | TBE-01 to TBE-03, API-04 | Before each release | QA-06 |
 | MASVS v2 testing using MASTG | SEC-MOB-*, SC-MOB-*, RN-* | Before first public release and after major changes | QA-07 |
 | Threat model review | Section 4 | Per QA-09 | QA-09 |
-| External penetration test | All | TO BE DECIDED | UNKNOWN |
+| External penetration test | All | Before first public release, then annually | QA-07 |
 
 ---
 
@@ -853,40 +853,18 @@ These add to `JS-*` for `API`. Rules marked **[v]** exist only in the Node.js 26
 
 | Area | Status |
 |---|---|
-| Incident response plan, on-call, severity levels | TO BE DECIDED. `ARCHITECTURE.md` names SNS alerting to an on-call tool but not the tool itself (UNKNOWN) |
-| Breach notification obligations (CCPA/CPRA; GDPR before any EU launch, PRIV-10) | TO BE DECIDED with Legal |
-| Vulnerability and patch SLAs (dependencies, Node runtime, base images, mobile SDKs) | TO BE DECIDED (SQ-15) |
-| Key and secret rotation runbooks | TO BE DECIDED (SC-SEC-03 sets the cadence) |
-| Production access for humans (break-glass, just-in-time access, MFA) | UNKNOWN (SQ-03) |
-| Security training and review ownership | UNKNOWN |
+| Incident response plan, on-call, severity levels | PagerDuty is the on-call tool. Severities SEV1 to SEV3. The IR plan lives in `docs/runbooks/` before public release |
+| Breach notification obligations (CCPA/CPRA; GDPR before any EU launch, PRIV-10) | US state laws and CCPA/CPRA: notify affected users without unreasonable delay. GDPR 72-hour notification applies before any EU launch |
+| Vulnerability and patch SLAs (dependencies, Node runtime, base images, mobile SDKs) | Critical 7 days, high 30 days, medium 90 days, low next routine update. Node security releases within 7 days |
+| Key and secret rotation runbooks | `docs/runbooks/` before M5 (SC-SEC-03 sets the cadence) |
+| Production access for humans (break-glass, just-in-time access, MFA) | AWS IAM Identity Center with phishing-resistant MFA (passkeys or security keys); no IAM users. Production write access by just-in-time elevation approved by a second person, at most 1 hour. Break-glass root credentials on hardware keys under a sealed process; every use alerts. GitHub: org SSO, required 2FA with security keys, branch protection |
+| Security training and review ownership | The project owner, as security owner, until a security team exists |
 
 ---
 
 ## 11. Open Security Questions
 
-| ID | Question or conflict | Affects | Owner | Needed by |
-|---|---|---|---|---|
-| SQ-01 | Who is the security contact, and what is the private reporting channel, response targets, and disclosure policy? | Section 1 | TO BE DECIDED | Before public release |
-| SQ-02 | Is AAL1, inherited from the IdPs, sufficient for v1? | Section 5.1 | Security | M1 |
-| SQ-03 | Human access model for AWS and GitHub (SSO, MFA, just-in-time, break-glass), and security log immutability. None of the documents specify these | T-20, SC-LOG-04, AC-10 | Engineering, Security | M1 |
-| SQ-04 | **Conflict (version).** The Node.js rule source targets Node.js 26, which becomes LTS in October 2026. `ARCHITECTURE.md` selects Node.js 24 LTS. Rules marked **[v]** (the `--allow-net` permission, `module.registerHooks`, `Temporal`) do not apply on Node 24. The React Native source targets 0.87, but `ARCHITECTURE.md` pins no React Native version, and Expo SDK compatibility with 0.87 is UNKNOWN. Recommendation: adopt Node.js 26 LTS before M1 and pin React Native in `ARCHITECTURE.md` | Section 7 | Engineering | M1 |
-| SQ-05 | Sign in with Apple on Android uses Apple's web flow (`ARCHITECTURE.md` 8.1). Does it support PKCE as SEC-AUTH-01 requires? If not, choose between dropping Apple sign-in on Android and a documented exception | SEC-AUTH-01, T-05 | Security, Engineering | M1 |
-| SQ-07 | `GET /v1/places/autocomplete` puts address text in the query string (section 4.2 of `REQUIREMENTS.md`), which makes PRIV-05 depend on logging configuration in several sinks (SC-LOG-05, SEC-LOG-02). Should the contract change it to `POST` with a body before M3? | T-24, SC-LOG-05 | Engineering | M3 |
-| SQ-09 | Abuse handling. Should v1 have block or report, or limits on repeat sessions between the same pair of accounts (AB-01, AB-02)? Neither is in scope in `REQUIREMENTS.md` | Section 4.7 | Product, Security | M2 |
-| SQ-11 | Duplicate JSON keys: reject them on auth and redemption bodies (needs a parser that reports duplicates), or document why last-wins is harmless given schema validation | JS-JSON-03 | Engineering | M1 |
-| SQ-12 | Sentry must act under a DPA; its DPA status is UNKNOWN. Product analytics has no endpoint or vendor yet (`ARCHITECTURE.md` AQ-03) | SC-PRIV-05, SC-MOB-06, PRIV-11, OBS-03 | Legal, Product | M5 |
-| SQ-13 | SEC-RL-02 says "5 failures per session". The design counts failures per invite, since a failed guess identifies the invite through the `inviteId` part of the token. Confirm this reading | SEC-RL-02 | Security | M2 |
-| SQ-14 | Screenshot and app switcher protection for screens showing the user's own precise origin or an invite. This is not specified in `DESIGN.md` or `REQUIREMENTS.md` | SC-MOB-03 | Design, Security | M3 |
-| SQ-15 | Vulnerability and patch SLAs for dependencies, the Node runtime, base images, and mobile SDKs | SEC-SC-02, NODE-RT-01 | Security | M1 |
-| SQ-16 | Choice of lint plugins that enforce section 7, and the location of the rule exceptions log | Section 7.1 | Engineering | M1 |
-| SQ-17 | The React Native rule source requires React 19 and TypeScript 7 rule sets first. They were not provided, so this document has no `REACT-*` or `TS-*` rules | Section 7.3 | Security | M1 |
-| SQ-19 | How does the API verify that the client redeeming an authorization code is the one that requested it (T-46)? Options: a server-issued nonce, which needs an endpoint that section 4.2 of `REQUIREMENTS.md` lacks, or a nonce bound to the DPoP key (SC-AUTH-09, interim). Depends on SD-01 | SEC-AUTH-03, SC-AUTH-09 | Security | M1 |
-| SQ-20 | Where does the attestation challenge come from (T-47)? Section 4.2 of `REQUIREMENTS.md` has no challenge endpoint. Options: add one, bind attestation to a hash of the request, or drop attestation from v1 and rely on the other controls | SEC-RL-05, SC-RL-06 | Security, Engineering | M1 |
-| SQ-21 | Section 4.2 of `REQUIREMENTS.md` says redemption "returns guest or account-bound credentials". SC-AUTH-11 reads that as: guests get new tokens, and signed-in invitees authenticate and get none. Confirm | SC-AUTH-11, T-59 | Security | M2 |
-| SQ-22 | **Conflict.** API-05 requires 24-hour replay of every creating `POST`, which would store invite secrets and tokens (T-51). SC-VAL-07 applies until this is resolved. Proposed resolution: amend API-05 to exclude responses that carry secrets | API-05, SC-VAL-07 | Engineering, Security | M1 |
-| SQ-23 | **Conflict.** `ARCHITECTURE.md` 7.3 accepts degraded replay protection when Redis is lost, while SC-AUTH-12 fails closed on sensitive routes (T-58). Decide the behavior for read-only routes, and whether denylist entries also need a durable store | SC-AUTH-12, `ARCHITECTURE.md` 7.3 | Security, Engineering | M1 |
-| SQ-24 | In low-density areas, should snapping use coarser cells than geohash-6 (T-60)? If so, which density data source and threshold apply? | PRIV-03, SC-PRIV-01 | Security, Product | M3 |
-| SQ-18 | Account deletion versus backups. `FR-ACC-04` requires irreversible removal "within 30 days", and backups roll off after 30 days. Is a backup that still holds deleted data on day 30 compliant? (ASSUMPTION: yes, if retention is exactly 30 days, but Legal should confirm) | SC-DATA-05 | Legal | M1 |
+There are no open security questions.
 
 ---
 

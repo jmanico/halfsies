@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-labelledby="halfsies-mark-title">
+  <title id="halfsies-mark-title">Halfsies</title>
+  <g id="mark">
+    <path d="M60 8 A56 56 0 0 0 60 120 Z" fill="#FF7A1A"/>
+    <path d="M68 8 A56 56 0 0 1 68 120 Z" fill="#5B4BFF"/>
+    <circle cx="64" cy="64" r="15" fill="#161A3D" stroke="#FFFFFF" stroke-width="6"/>
+  </g>
+</svg>
